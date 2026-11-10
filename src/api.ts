@@ -17,6 +17,25 @@ const BASE = "/api";
 // The local vault with participant data runs on its own origin (docs/26), so this page cannot reach its storage.
 // Where it lives comes from /config.json (filled in by nginx from KLUIS_URL, or by the mock server); without it the
 // address is derived: cockpit.example.nl -> kluis.example.nl. null: no link.
+// Cockpit and vault each have their own named tab. A link between them activates that tab when it is already open,
+// instead of loading it again: reloading the vault restarts Python and locks it.
+export const COCKPIT_TAB = "energiegedrag-cockpit";
+export const KLUIS_TAB = "energiegedrag-kluis";
+
+export function openTab(event: { preventDefault(): void }, url: string, name: string): void {
+  const w = window.open("", name);
+  if (!w) return; // blocked: the link opens normally
+  event.preventDefault();
+  let fresh = false;
+  try {
+    fresh = w.location.href === "about:blank"; // readable only while it is a new, empty tab
+  } catch {
+    fresh = false; // cross-origin: the vault is already open there
+  }
+  if (fresh) w.location.href = url;
+  w.focus();
+}
+
 export async function kluisUrl(): Promise<string | null> {
   try {
     const r = await fetch("/config.json", { cache: "no-cache" });

@@ -203,6 +203,25 @@ async function guarded(button, fn) {
 
 // ---- start -----------------------------------------------------------------------------------------------------------
 
+// Cockpit and vault each have their own named tab. Following a link between them activates that tab if it is open,
+// instead of loading the page again: leaving the vault page stops Python and locks the vault (on purpose), and
+// starting again takes seconds.
+const OWN_TAB = "energiegedrag-kluis";
+const COCKPIT_TAB = "energiegedrag-cockpit";
+function openTab(url, name) {
+  const w = window.open("", name);
+  if (!w) return true; // blocked: let the link do its normal work
+  let fresh = false;
+  try {
+    fresh = w.location.href === "about:blank"; // readable only while it is a new, empty tab
+  } catch {
+    fresh = false; // cross-origin: the other app is already open there
+  }
+  if (fresh) w.location.href = url;
+  w.focus();
+  return false;
+}
+
 /** The Cockpit lives on another origin: config.json (from nginx, COCKPIT_URL) or derived kluis.x -> cockpit.x. */
 async function cockpitLink() {
   let url = null;
@@ -214,6 +233,10 @@ async function cockpitLink() {
   const a = $("cockpit-link");
   if (url) {
     a.href = url;
+    a.target = COCKPIT_TAB;
+    a.onclick = (e) => {
+      if (!openTab(url, COCKPIT_TAB)) e.preventDefault();
+    };
     a.classList.remove("hidden");
   } else {
     a.parentElement.classList.add("hidden");
@@ -221,6 +244,8 @@ async function cockpitLink() {
 }
 
 async function boot() {
+  window.name = OWN_TAB;
+  window.opener = null; // opened from the Cockpit: no handle back to that page
   cockpitLink();
   $("csp").textContent = document.querySelector('meta[http-equiv="Content-Security-Policy"]').content.split("; ").join(";\n");
   try {
@@ -229,7 +254,7 @@ async function boot() {
       `Kluis ${m.kluis} · Pyodide ${m.pyodide} · commit `,
       h("a", { href: `${m.bron.repo}/commit/${m.bron.commit}` }, (m.bron.commit || "onbekend").slice(0, 12)),
       ` · bouw ${m.bouw} · `,
-      h("a", { href: "manifest.json" }, "manifest.json"),
+      h("a", { href: "manifest.json", target: "_blank", rel: "noopener" }, "manifest.json"),
     );
   } catch {
     $("build").textContent = "Geen manifest.json (ontwikkelversie).";

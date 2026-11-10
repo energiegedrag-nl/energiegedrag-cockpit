@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, explain, kluisUrl } from "../api";
+import { KLUIS_TAB, api, explain, kluisUrl, openTab } from "../api";
 import {
   accountStateLabel,
   ago,
@@ -306,7 +306,7 @@ function MailPanel({ campaign }: { campaign: Campaign }) {
       </label>
       <p className="hint">
         Standaard uit. Uit betekent: de campagnebeheerder mailt uitnodigingen met het eigen mailprogramma, vanuit de{" "}
-        {kluis ? <a href={kluis}>lokale kluis</a> : "lokale kluis"}. Er worden nergens mailwachtwoorden opgeslagen.
+        {kluis ? <a href={kluis} target={KLUIS_TAB} onClick={(e) => openTab(e, kluis, KLUIS_TAB)}>lokale kluis</a> : "lokale kluis"}. Er worden nergens mailwachtwoorden opgeslagen.
       </p>
       <label htmlFor="alias">Helpdeskadres van deze campagne</label>
       <input id="alias" type="email" placeholder="helpdesk-winter@energiegedrag.nl" value={aliasValue} onChange={(e) => setAlias(e.target.value)} />
