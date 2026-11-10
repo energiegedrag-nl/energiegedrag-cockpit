@@ -132,6 +132,8 @@ tbody tr:last-child td { border-bottom: none; }
 .card-title { font-weight: 600; }
 .qr { background: #fff; border-radius: 4px; flex: none; }
 
+.topnav a.kluis-link { color: #2a1a00; background: #f2b33d; padding: 2px 10px; border-radius: 999px; font-weight: 600; }
+
 /* Flash station and inventory */
 .inv-flashed { color: var(--ok); background: var(--ok-bg); }
 .inv-assigned, .inv-shipped { color: var(--accent); background: var(--missing-bg); }

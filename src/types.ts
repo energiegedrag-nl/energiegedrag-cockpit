@@ -136,3 +136,11 @@ export interface InventoryChange {
   account_id?: number;
   details?: string;
 }
+
+// Mail setting per campaign (PUT by the admin): may it use the mail facility of energiegedrag.nl.
+export interface CampaignMail {
+  campaign_id?: number;
+  enabled: boolean;
+  helpdesk_alias: string;
+  updated_at?: number | null;
+}

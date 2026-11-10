@@ -60,6 +60,15 @@ NFH_API=http://localhost:8080 npm run dev   # Vite proxies /api to NFH_API
 npm test                                   # unit tests (Vitest)
 npm run build                              # typecheck and production build in dist/
 python -m unittest discover -s mirror      # firmware mirror tests
+python -m pytest kluis/tests               # local vault tests (age, database, mail)
+python kluis/maak.py --uit kluis/dist      # build the local vault (downloads and checks Pyodide)
+```
+
+Without a server: `tools/mock_server.py` serves a build with a fake `/api` (sample campaigns, inventory, vault storage; token `demo`), e.g. the Cockpit on 5178 and the vault on 5179:
+
+```shell
+python -I tools/mock_server.py dist 5178 <firmware-mirror-dir>
+MOCK_LOG=1 python -I tools/mock_server.py kluis/dist 5179
 ```
 
 Stack: TypeScript, React 18, Vite, TanStack Query. API types: [`src/types.ts`](src/types.ts), matching package `needforheat/cockpit` of the server.

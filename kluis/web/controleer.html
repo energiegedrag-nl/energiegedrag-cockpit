@@ -1,0 +1,109 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: EUPL-1.2 -->
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<title>Controleren · Lokale kluis</title>
+<link rel="stylesheet" href="kluis.css">
+</head>
+<body>
+<div class="vault-banner" role="banner">
+  <svg class="lock" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10V7a5 5 0 0 1 10 0v3h1a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1h1Zm2 0h6V7a3 3 0 0 0-6 0v3Z"/></svg>
+  <div><strong>Lokale kluis</strong> · waarom je hem kunt vertrouwen, en hoe je dat zelf nagaat</div>
+  <span class="banner-link">Sluit dit tabblad om terug te gaan naar de kluis</span>
+</div>
+<main class="frame">
+
+<section class="panel">
+<h1>De belofte</h1>
+<p>Namen, adressen en contactgegevens van proefpersonen staan <strong>alleen versleuteld</strong> op jouw apparaat en,
+als back-up, versleuteld op de server. Ontsleutelen gebeurt alleen in jouw browser, met een sleutel die in jouw browser is
+gemaakt. De NeedForHeat-server, en wie hem beheert, kan de kluis niet lezen. De server kent alleen pseudoniemen:
+accountnummers.</p>
+<p>Je hoeft dat niet op ons woord te geloven. Hieronder staat per bewering hoe je het nagaat, van eenvoudig naar grondig.</p>
+</section>
+
+<section class="panel">
+<h2>1. Wat er naar de server gaat</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Verzoek</th><th>Wat gaat er heen</th><th>Wat komt terug</th></tr></thead>
+<tbody>
+<tr><td><code>GET /api/admin/overview</code></td><td>niets</td><td>campagnes (namen, nummers)</td></tr>
+<tr><td><code>POST /api/admin/campaigns/{id}/accounts</code></td><td>alleen een <em>aantal</em></td><td>nieuwe accountnummers en uitnodigingslinks</td></tr>
+<tr><td><code>GET /api/admin/campaigns/{id}/mail</code></td><td>niets</td><td>staat de mailfaciliteit aan, helpdeskadres</td></tr>
+<tr><td><code>PUT /api/admin/vaults/{kluis-id}</code></td><td>de kluis, versleuteld (age)</td><td>versienummer</td></tr>
+<tr><td><code>GET /api/admin/vaults/{kluis-id}</code></td><td>niets</td><td>de kluis, versleuteld</td></tr>
+</tbody></table></div>
+<p><strong>Zelf zien:</strong> open de ontwikkelhulpmiddelen van je browser (F12), tab <em>Netwerk</em>, en werk in de
+kluis. Je ziet alleen deze verzoeken. Bij <code>accounts</code> staat in de aanvraag alleen <code>{"count": n}</code>;
+de back-up begint met <code>age-encryption.org/v1</code> en is verder onleesbaar. De server weigert alles wat niet zo begint.</p>
+<p><strong>Afgedwongen:</strong> de pagina heeft een Content-Security-Policy (onderaan de kluis onder <em>Wat deze pagina
+mag</em>): alleen deze eigen host, geen formulieren die ergens heen gaan. De webserver van de kluis laat bovendien alleen
+deze vijf API-routes door. Python en de pakketten staan op dezelfde host; er wordt niets van een CDN geladen.</p>
+</section>
+
+<section class="panel">
+<h2>2. De versleuteling</h2>
+<ul>
+<li><strong>Formaat:</strong> <a href="https://age-encryption.org/v1">age v1</a>, een open en eenvoudige standaard
+(X25519, ChaCha20-Poly1305, HKDF-SHA256, scrypt). Onze implementatie (<code>kluis/src/kluis/age.py</code>, ongeveer 300
+regels) gebruikt de bibliotheek <code>cryptography</code> en wordt in CI getest tegen de officiële <code>age</code>-tool, in
+beide richtingen.</li>
+<li><strong>Waarom asymmetrisch:</strong> de kluis is versleuteld voor een of meer <em>publieke</em> sleutels (die van jou,
+en van collega's die je toevoegt). Toegang geven of intrekken kan zonder een gedeeld wachtwoord rond te sturen.</li>
+<li><strong>Je geheime sleutel</strong> is in je browser gemaakt. Op dit apparaat staat hij versleuteld met je
+wachtwoordzin (age, scrypt). De herstelsleutel heb je zelf offline bewaard. Geen van beide gaat naar de server.</li>
+<li><strong>Zelf openen, zonder de Cockpit:</strong> download de versleutelde kluis (tab <em>Sleutels</em>) en open hem met
+de standaardtools:
+<pre class="key">age -d -i kluis-herstelsleutel.txt kluis.age &gt; kluis.sqlite
+sqlite3 kluis.sqlite "select id, account_id, naam, email from deelnemer"</pre>
+Zo weet je ook dat je nooit vastzit aan deze software.</li>
+</ul>
+</section>
+
+<section class="panel">
+<h2>3. Draait hier de code die gepubliceerd is?</h2>
+<p>De kluis is een handvol statische bestanden. Elk bestand staat met grootte en SHA-256 in
+<a href="manifest.json"><code>manifest.json</code></a>, samen met de commit waaruit het is gebouwd.</p>
+<ol>
+<li><strong>Broncode lezen:</strong> <a href="https://github.com/energiegedrag-nl/energiegedrag-cockpit/tree/main/kluis">kluis/ in energiegedrag-cockpit</a>.
+De schil (<code>app.js</code>) geeft alleen JSON door; alles met persoonsgegevens en sleutels gebeurt in Python
+(<code>src/kluis</code>), dat geen netwerkbibliotheek mag importeren (test <code>test_kern.py</code>).</li>
+<li><strong>Herkomst van de build:</strong> GitHub Actions bouwt de kluis en ondertekent <code>manifest.json</code>
+(build provenance attestation):
+<pre class="key">curl -O https://kluis.energiegedrag.nl/manifest.json
+gh attestation verify manifest.json --repo energiegedrag-nl/energiegedrag-cockpit</pre></li>
+<li><strong>Zelf bouwen en vergelijken:</strong> de build is reproduceerbaar: dezelfde commit geeft byte voor byte dezelfde
+bestanden. Bouw zelf en vergelijk met wat deze server uitlevert:
+<pre class="key">git clone https://github.com/energiegedrag-nl/energiegedrag-cockpit
+cd energiegedrag-cockpit
+git checkout &lt;commit uit manifest.json&gt;
+python kluis/controleer.py https://kluis.energiegedrag.nl/</pre>
+<code>controleer.py</code> bouwt de kluis, haalt elk bestand van de server en meldt elk verschil.</li>
+<li><strong>Pyodide:</strong> Python in de browser komt uit een vastgepinde Pyodide-release. De runtime wordt bij het bouwen
+gecontroleerd tegen <code>kluis/pyodide-sha256.json</code>, elk pakket tegen de hash in <code>pyodide-lock.json</code>, en de
+browser controleert de pakketten bij het laden nog eens.</li>
+</ol>
+</section>
+
+<section class="panel">
+<h2>4. Wat dit niet afdekt</h2>
+<ul>
+<li><strong>Een gekraakte server kan andere code uitleveren.</strong> Dat zie je met stap 3 (controleer.py of de hashes
+in manifest.json), maar alleen als je kijkt. Controleer na een update, en zeker voordat je een nieuwe kluis maakt.</li>
+<li><strong>Je eigen apparaat:</strong> malware of een kwaadaardige browserextensie op je laptop kan meekijken terwijl de
+kluis open is. Werk op een bijgewerkt apparaat, vergrendel de kluis als je klaar bent.</li>
+<li><strong>Exports en mailconcepten</strong> (CSV, .eml) zijn niet versleuteld. Verwijder ze na gebruik.</li>
+<li><strong>Uitnodigingen per mail</strong> gaan via je eigen mailprogramma; wat je mailprovider ziet, valt buiten de kluis.
+De mailfaciliteit van energiegedrag.nl (als de beheerder die voor je campagne aanzet) ziet ontvanger en inhoud van wat hij
+verstuurt.</li>
+<li><strong>Metadata:</strong> de server ziet hoe groot de kluis is en wanneer hij verandert, en hoeveel accounts je maakt.</li>
+</ul>
+</section>
+
+</main>
+</body>
+</html>

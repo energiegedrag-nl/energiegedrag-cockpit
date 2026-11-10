@@ -1,0 +1,40 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: EUPL-1.2 -->
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self'; connect-src 'self'; img-src 'self' data: blob:; style-src 'self'; font-src 'self'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<title>Lokale kluis · Energiegedrag Cockpit</title>
+<link rel="stylesheet" href="kluis.css">
+<script src="app.js" defer></script>
+</head>
+<body>
+<div class="vault-banner" role="banner">
+  <svg class="lock" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10V7a5 5 0 0 1 10 0v3h1a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1h1Zm2 0h6V7a3 3 0 0 0-6 0v3Z"/></svg>
+  <div>
+    <strong>Lokale kluis</strong> · persoonsgegevens van proefpersonen, versleuteld op dit apparaat.
+    <span class="banner-sub">Naar de server gaan alleen aantallen, accountnummers en de versleutelde kluis.</span>
+  </div>
+  <a href="controleer.html" class="banner-link" target="_blank" rel="noopener">Waarom kun je dit vertrouwen?</a>
+</div>
+
+<div class="status" id="status" aria-live="polite"></div>
+
+<main id="main" class="frame">
+  <p class="muted">Python wordt gestart in je browser…</p>
+</main>
+
+<footer class="foot">
+  <details>
+    <summary>Wat deze pagina mag</summary>
+    <p>Deze regels (Content-Security-Policy) dwingt de browser af. Alleen deze eigen host, geen andere servers,
+      geen formulieren die ergens heen gaan. <code>wasm-unsafe-eval</code> is nodig om Python (WebAssembly) te draaien.</p>
+    <pre id="csp"></pre>
+  </details>
+  <p id="build" class="muted small"></p>
+  <p class="muted small"><a href="#" id="cockpit-link" class="hidden">Terug naar de Cockpit</a> (die heeft geen toegang tot deze kluis)</p>
+</footer>
+</body>
+</html>

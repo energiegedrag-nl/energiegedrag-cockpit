@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: EUPL-1.2
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, explain } from "../api";
+import { KLUIS_TAB, api, explain, kluisUrl, openTab } from "../api";
 import {
   accountStateLabel,
   ago,
@@ -14,7 +14,7 @@ import {
   sourceStateLabel,
   toDateInput,
 } from "../format";
-import type { AccountState, AccountStatus, Campaign, CampaignStatus, Invitation, Source, SourceStatus } from "../types";
+import type { AccountState, AccountStatus, Campaign, CampaignMail, CampaignStatus, Invitation, Source, SourceStatus } from "../types";
 import { InvitationCards } from "./Invitations";
 
 const FILTERS: (AccountState | "all")[] = ["all", "attention", "incomplete", "invited", "active"];
@@ -81,6 +81,7 @@ export function CampaignPage({ id }: { id: number }) {
       <section className="two-col">
         <InvitePanel campaign={c} />
         <SettingsPanel campaign={c} />
+        <MailPanel campaign={c} />
       </section>
 
       <SourcesPanel sources={data.sources} />
@@ -269,6 +270,52 @@ function SettingsPanel({ campaign }: { campaign: Campaign }) {
           {save.isPending ? "Opslaan…" : "Opslaan"}
         </button>
         {saved && !save.isPending && <span className="ok-text">Opgeslagen</span>}
+      </div>
+    </form>
+  );
+}
+
+/** Admin decision per campaign: may it use the mail facility of energiegedrag.nl (invitations, helpdesk alias)? */
+function MailPanel({ campaign }: { campaign: Campaign }) {
+  const queryClient = useQueryClient();
+  const setting = useQuery({ queryKey: ["campaign-mail", campaign.id], queryFn: () => api.campaignMail(campaign.id) });
+  const [alias, setAlias] = useState<string | null>(null);
+  const kluis = useQuery({ queryKey: ["kluis-url"], queryFn: kluisUrl, staleTime: Infinity, refetchInterval: false }).data;
+  const save = useMutation({
+    mutationFn: (m: CampaignMail) => api.setCampaignMail(campaign.id, m),
+    onSuccess: (m) => {
+      queryClient.setQueryData(["campaign-mail", campaign.id], m);
+      setAlias(null);
+    },
+  });
+  if (setting.isPending) return <div className="panel muted">Mailinstelling laden…</div>;
+  if (setting.isError) return <div className="panel error">{explain(setting.error)}</div>;
+  const m = setting.data;
+  const aliasValue = alias ?? m.helpdesk_alias;
+  return (
+    <form
+      className="panel"
+      onSubmit={(e) => {
+        e.preventDefault();
+        save.mutate({ enabled: m.enabled, helpdesk_alias: aliasValue.trim().toLowerCase() });
+      }}
+    >
+      <h2>E-mail via energiegedrag.nl</h2>
+      <label className="check">
+        <input type="checkbox" checked={m.enabled} disabled={save.isPending} onChange={(e) => save.mutate({ enabled: e.target.checked, helpdesk_alias: m.helpdesk_alias })} />
+        Deze campagne mag de mailfaciliteit van energiegedrag.nl gebruiken
+      </label>
+      <p className="hint">
+        Standaard uit. Uit betekent: de campagnebeheerder mailt uitnodigingen met het eigen mailprogramma, vanuit de{" "}
+        {kluis ? <a href={kluis} target={KLUIS_TAB} onClick={(e) => openTab(e, kluis, KLUIS_TAB)}>lokale kluis</a> : "lokale kluis"}. Er worden nergens mailwachtwoorden opgeslagen.
+      </p>
+      <label htmlFor="alias">Helpdeskadres van deze campagne</label>
+      <input id="alias" type="email" placeholder="helpdesk-winter@energiegedrag.nl" value={aliasValue} onChange={(e) => setAlias(e.target.value)} />
+      {save.isError && <p className="error" role="alert">{explain(save.error)}</p>}
+      <div className="row">
+        <button type="submit" disabled={save.isPending || alias === null}>
+          Opslaan
+        </button>
       </div>
     </form>
   );

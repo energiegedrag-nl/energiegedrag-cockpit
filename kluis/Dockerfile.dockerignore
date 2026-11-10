@@ -1,0 +1,6 @@
+# Own ignore file for kluis/Dockerfile (BuildKit): keeps .git so maak.py can put the commit in manifest.json.
+node_modules
+dist
+kluis/dist/
+kluis/.pyodide-cache/
+**/__pycache__

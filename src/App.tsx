@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: EUPL-1.2
 import { useEffect, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { getToken, setToken } from "./api";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { COCKPIT_TAB, KLUIS_TAB, getToken, kluisUrl, openTab, setToken } from "./api";
 import { Login } from "./pages/Login";
 import { OverviewPage } from "./pages/OverviewPage";
 import { CampaignPage } from "./pages/CampaignPage";
@@ -32,6 +32,11 @@ export function App() {
   const [token, setTokenState] = useState(getToken());
   const [route, setRoute] = useState(parseRoute(location.hash));
   const queryClient = useQueryClient();
+  const kluis = useQuery({ queryKey: ["kluis-url"], queryFn: kluisUrl, staleTime: Infinity, refetchInterval: false }).data;
+
+  useEffect(() => {
+    window.name = COCKPIT_TAB;
+  }, []);
 
   useEffect(() => {
     const onHash = () => setRoute(parseRoute(location.hash));
@@ -81,6 +86,11 @@ export function App() {
           <a href="#/voorraad" aria-current={route.page === "inventory" || route.page === "device" ? "page" : undefined}>
             Voorraad
           </a>
+          {kluis && (
+            <a href={kluis} target={KLUIS_TAB} onClick={(e) => openTab(e, kluis, KLUIS_TAB)} className="kluis-link" title="Persoonsgegevens van proefpersonen: versleuteld, alleen op je eigen apparaat">
+              Lokale kluis
+            </a>
+          )}
           <button type="button" className="link" onClick={logout}>
             Uitloggen
           </button>

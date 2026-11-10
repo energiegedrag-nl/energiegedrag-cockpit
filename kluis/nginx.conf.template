@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: EUPL-1.2
+server {
+    listen 80;
+    server_name _;
+    root /usr/share/nginx/html;
+
+    # Same rules as the <meta> in index.html, plus what only a header can do (frame-ancestors).
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self'; connect-src 'self'; img-src 'self' data: blob:; style-src 'self'; font-src 'self'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'" always;
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy no-referrer always;
+    add_header Cross-Origin-Opener-Policy same-origin always;
+    add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=()" always;
+
+    # The vault talks to the API on its own origin. Only what it needs is passed; everything else is 404.
+    location ~ ^/api/(admin/overview|admin/campaigns/[0-9]+/accounts|admin/campaigns/[0-9]+/mail|admin/vaults/[0-9a-f-]+)$ {
+        rewrite ^/api/(.*)$ /$1 break;
+        proxy_pass ${API_UPSTREAM};
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        client_max_body_size 16m;
+        access_log off;
+    }
+    location /api/ {
+        return 404;
+    }
+
+    # Where the Cockpit lives, for the link back. Not part of the verified build (it is only a link).
+    location = /config.json {
+        default_type application/json;
+        add_header Cache-Control no-cache;
+        return 200 '{"cockpit_url": "${COCKPIT_URL}"}';
+    }
+
+    location ~ \.(wasm)$ {
+        types { application/wasm wasm; }
+        expires -1;
+    }
+    location / {
+        try_files $uri =404;
+        expires -1;
+    }
+}

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: EUPL-1.2
 import type {
+  CampaignMail,
   CampaignStatus,
   CampaignUpdate,
   Campaign,
@@ -13,6 +14,41 @@ import type {
 
 // The Cockpit talks to needforheat-server-api through `/api` on its own origin (nginx or the Vite dev server proxies it).
 const BASE = "/api";
+
+// The local vault with participant data runs on its own origin (docs/kluis.md), so this page cannot reach its storage.
+// Where it lives comes from /config.json (filled in by nginx from KLUIS_URL, or by the mock server); without it the
+// address is derived: cockpit.example.nl -> kluis.example.nl. null: no link.
+// Cockpit and vault each have their own named tab. A link between them activates that tab when it is already open,
+// instead of loading it again: reloading the vault restarts Python and locks it.
+export const COCKPIT_TAB = "energiegedrag-cockpit";
+export const KLUIS_TAB = "energiegedrag-kluis";
+
+export function openTab(event: { preventDefault(): void }, url: string, name: string): void {
+  const w = window.open("", name);
+  if (!w) return; // blocked: the link opens normally
+  event.preventDefault();
+  let fresh = false;
+  try {
+    fresh = w.location.href === "about:blank"; // readable only while it is a new, empty tab
+  } catch {
+    fresh = false; // cross-origin: the vault is already open there
+  }
+  if (fresh) w.location.href = url;
+  w.focus();
+}
+
+export async function kluisUrl(): Promise<string | null> {
+  try {
+    const r = await fetch("/config.json", { cache: "no-cache" });
+    if (r.ok) {
+      const c = (await r.json()) as { kluis_url?: string };
+      if (c.kluis_url) return c.kluis_url;
+    }
+  } catch {
+    // no config: derive below
+  }
+  return location.hostname.startsWith("cockpit.") ? `${location.protocol}//kluis.${location.hostname.slice(8)}/` : null;
+}
 const TOKEN_KEY = "cockpit.adminToken";
 
 // The admin token lives in sessionStorage only: it is gone when the tab closes (design docs/ontwerp.md, phase 1).
@@ -77,6 +113,8 @@ export const api = {
   createCampaign: (campaign: NewCampaign) => request<{ id: number }>("POST", "/campaign", campaign),
   invite: (campaignId: number, count: number) => request<Invitation[]>("POST", `/admin/campaigns/${campaignId}/accounts`, { count }),
   newInvitation: (accountId: number) => request<Invitation>("POST", `/admin/accounts/${accountId}/invitation`),
+  campaignMail: (id: number) => request<CampaignMail>("GET", `/admin/campaigns/${id}/mail`),
+  setCampaignMail: (id: number, m: CampaignMail) => request<CampaignMail>("PUT", `/admin/campaigns/${id}/mail`, m),
   inventory: () => request<InventoryDevice[]>("GET", "/admin/inventory"),
   inventoryDevice: (id: number) => request<InventoryDevice>("GET", `/admin/inventory/${id}`),
   inventoryByMac: (mac: string) => request<InventoryDevice>("GET", `/admin/inventory/mac/${mac.replace(/:/g, "")}`),
