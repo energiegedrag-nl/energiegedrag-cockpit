@@ -43,14 +43,44 @@ let worker = null;
 let seq = 0;
 const pending = new Map();
 
+function failAll(message) {
+  for (const p of pending.values()) p.reject(new Error(message));
+  pending.clear();
+}
+
+/** Starts the worker and shows its progress; resolves with the versions, rejects with a readable error. */
 function startWorker() {
+  const started = Date.now();
+  const line = h("p", { class: "muted" }, "Python wordt gestart in je browser…");
+  const clock = h("p", { class: "small muted" });
+  const bar = h("progress", {});
+  $("main").replaceChildren(line, bar, clock);
+  const tick = setInterval(() => {
+    const s = Math.round((Date.now() - started) / 1000);
+    clock.textContent = `${s} s` + (s > 60 ? " · duurt lang: kijk in de console van de browser (F12) als er niets meer gebeurt" : "");
+  }, 1000);
+
   worker = new Worker("worker.js");
   worker.onmessage = (e) => {
+    if (e.data.type === "status") {
+      line.textContent = e.data.text;
+      return;
+    }
     const p = pending.get(e.data.id);
     pending.delete(e.data.id);
     if (p) e.data.ok ? p.resolve(e.data.result) : p.reject(new Error(e.data.error));
   };
-  return py("start");
+  // An error outside a request (the script does not load, or something throws in the worker) reaches whoever waits,
+  // instead of a message that never changes.
+  worker.onerror = (e) => {
+    e.preventDefault();
+    console.error("kluis-worker:", e.message, e.filename, e.lineno);
+    failAll(`Fout in de Python-worker: ${e.message || "onbekend"}${e.filename ? ` (${e.filename.split("/").pop()}:${e.lineno})` : ""}`);
+  };
+  worker.onmessageerror = () => failAll("Een antwoord van de Python-worker kwam niet aan.");
+  const ready = py("start");
+  ready.finally(() => clearInterval(tick)).catch(() => {});
+  return ready;
 }
 function py(name, args) {
   return new Promise((resolve, reject) => {

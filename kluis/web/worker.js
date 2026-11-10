@@ -3,7 +3,9 @@
 // at start, checked against kluis.json, and the Python package itself does no requests (tests/test_kern.py).
 "use strict";
 
-importScripts("./pyodide/pyodide.js");
+const BASE = new URL("./", self.location.href).href;
+const PYODIDE = new URL("pyodide/", BASE).href;
+const status = (text) => self.postMessage({ type: "status", text });
 
 let call = null;
 
@@ -12,19 +14,27 @@ async function sha256(buffer) {
   return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-const ready = (async () => {
-  const info = await (await fetch("./kluis.json", { cache: "no-cache" })).json();
-  const pyodide = await loadPyodide({ indexURL: "./pyodide/" });
+async function start() {
+  status("Python laden (Pyodide, eenmalig ongeveer 12 MB)…");
+  importScripts(PYODIDE + "pyodide.js");
+  const infoPromise = fetch(new URL("kluis.json", BASE), { cache: "no-cache" }).then((r) => r.json());
+  const pyodide = await loadPyodide({ indexURL: PYODIDE });
+  status("Versleutelingsbibliotheek laden (cryptography)…");
   // checkIntegrity: Pyodide compares each wheel with the sha256 in pyodide-lock.json (which maak.py pinned).
-  await pyodide.loadPackage(["cryptography"], { checkIntegrity: true, messageCallback: () => {} });
-  const zip = await (await fetch("./" + info.zip)).arrayBuffer();
+  await pyodide.loadPackage(["cryptography"], { checkIntegrity: true, messageCallback: () => {}, errorCallback: (m) => status(m) });
+  status("Kluiscode controleren en laden…");
+  const info = await infoPromise;
+  const zip = await (await fetch(new URL(info.zip, BASE))).arrayBuffer();
   if ((await sha256(zip)) !== info.sha256) throw new Error("kluis.zip klopt niet met kluis.json: niet geladen.");
   pyodide.unpackArchive(zip, "zip", { extractDir: "/home/pyodide/kluis-src" });
   pyodide.runPython("import sys; sys.path.insert(0, '/home/pyodide/kluis-src')");
   const web = pyodide.pyimport("kluis.web");
   call = (name, args) => JSON.parse(web.call(name, JSON.stringify(args ?? {})));
   return { ...call("versie").result, pyodide: pyodide.version, kluis: info.version };
-})();
+}
+
+const ready = start();
+ready.catch(() => {}); // reported to whoever asks for "start"
 
 self.onmessage = async (event) => {
   const { id, name, args } = event.data;
