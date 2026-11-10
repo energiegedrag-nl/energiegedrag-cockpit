@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: EUPL-1.2
 import { firmwareLabel } from "../format";
 import type { InventoryDevice } from "../types";
 import { QR } from "./Invitations";

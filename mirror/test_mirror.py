@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: EUPL-1.2
 """Unit tests for the firmware mirror: python -m unittest discover mirror"""
 
 import struct

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: EUPL-1.2
 import { describe, expect, it } from "vitest";
 import { ago, durationLabel, fromDateInput, toDateInput } from "./format";
 

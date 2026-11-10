@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: EUPL-1.2
 // Web Serial + esptool-js: detect the chip, read the MAC address, erase, flash with MD5 verification and read the
 // console after a reset. esptool-js only writes flash; it never touches eFuses, so nothing here can lock a device.
 import { ESPLoader, Transport, type IEspLoaderTerminal } from "esptool-js";

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: EUPL-1.2
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 

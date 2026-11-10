@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: EUPL-1.2
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, explain } from "../api";

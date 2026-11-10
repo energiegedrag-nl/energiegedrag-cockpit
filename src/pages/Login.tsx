@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: EUPL-1.2
 import { useState, type FormEvent } from "react";
 import { api, explain } from "../api";
 

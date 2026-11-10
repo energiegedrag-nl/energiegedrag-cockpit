@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: EUPL-1.2
 // MD5 (RFC 1321) for esptool-js: after writing, it compares this hash with the MD5 the chip computes over the flash.
 // WebCrypto has no MD5; this is only a transfer check, the integrity check of the images is SHA-256 (firmware.ts).
 

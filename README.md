@@ -86,10 +86,10 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 Project is: _in progress_. First version, not yet deployed.
 
 ## License
-This software is available under the [European Union Public Licence v1.2 (EUPL-1.2)](LICENSE), © 2026 Henri ter Hofte.
+This software is available under the [European Union Public Licence v1.2 (EUPL-1.2)](LICENSE), © 2026 Henri ter Hofte. Source files carry an `SPDX-License-Identifier: EUPL-1.2` header.
 
 ## Credits
-This software is a collaborative effort of:
+Author:
 * Henri ter Hofte · [@henriterhofte](https://github.com/henriterhofte)
 
 Built on [React](https://react.dev), [Vite](https://vitejs.dev), [TanStack Query](https://tanstack.com/query), [node-qrcode](https://github.com/soldair/node-qrcode) and [esptool-js](https://github.com/espressif/esptool-js); the firmware manifest follows [ESP Web Tools](https://github.com/esphome/esp-web-tools).

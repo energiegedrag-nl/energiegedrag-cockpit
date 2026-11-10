@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: EUPL-1.2
 import { describe, expect, it } from "vitest";
 import { md5 } from "./md5";
 import { decodeV2, findProvisioning, nameMatchesMac } from "./provisioning";
