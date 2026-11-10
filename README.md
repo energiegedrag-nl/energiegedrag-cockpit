@@ -17,16 +17,18 @@ A NeedForHeat campaign used to be set up and followed with `curl` calls and data
 
 - **Campaigns**: overview with state (planned, running, ended), number of participants and how many activated the app; create a campaign from an existing app and data source list; change info page, start and end date.
 - **Invitations**: create any number of pseudonymous participant accounts at once, each with a personal activation link and QR code to print or send. Links are shown once; a participant who lost one gets a new link.
+- **Flash station**: connect a device over USB (Chrome or Edge, Web Serial), write a mirrored firmware release after checking its SHA-256, read the provisioning QR code from the console, register the device in the inventory and print a label. Only flash is written, never eFuses.
+- **Inventory**: every flashed device by MAC address with its life cycle (flashed, assigned, shipped, returned, erased), history, and whether the app activated it.
 - **Monitoring**: a table of participants × data sources with the latest upload and a state (on time, waiting for first data, late, not connected). *Late* uses each data source's `notification_threshold`, the same rule the app uses to warn participants. Filters for *attention needed*, *incomplete* and *invited*.
 
 The Cockpit stores no names or e-mail addresses: participants are account numbers. Keep the link between a person and a number in your own administration.
 
-The design is described in [docs/ontwerp.md](docs/ontwerp.md) and [docs/kluis.md](docs/kluis.md) (Dutch). The interface is in Dutch. Later phases (flashing devices from the browser, device inventory, OIDC login, server-side mail) are listed in the [`cockpit` TODO](https://github.com/energiegedrag-nl/needforheat-server-api/blob/main/TODO.md#cockpit).
+The design is described in [docs/ontwerp.md](docs/ontwerp.md) and [docs/kluis.md](docs/kluis.md) (Dutch). The interface is in Dutch. Later phases (OIDC login, server-side mail) are listed in the [`cockpit` TODO](https://github.com/energiegedrag-nl/needforheat-server-api/blob/main/TODO.md#cockpit).
 
 ## Deploying
 
 ### Prerequisites
-- `needforheat-server-api` with the `/admin` routes ([PR #22](https://github.com/energiegedrag-nl/needforheat-server-api/pull/22));
+- `needforheat-server-api` with the `/admin` routes ([PR #22](https://github.com/energiegedrag-nl/needforheat-server-api/pull/22)) and the inventory ([PR #23](https://github.com/energiegedrag-nl/needforheat-server-api/pull/23));
 - an admin token: `docker compose exec api needforheat-server-api admin create -n <name> -e <yyyy-mm-dd>`;
 - Docker, on the same Docker network as the API.
 
@@ -36,8 +38,14 @@ The design is described in [docs/ontwerp.md](docs/ontwerp.md) and [docs/kluis.md
    ```shell
    docker run -d --name cockpit --network <api-network> -e API_UPSTREAM=http://api:8080 energiegedrag-cockpit
    ```
-3. Publish it **only on the LAN or via a VPN** (a reverse-proxy rule that admits local addresses only), for example as `cockpit.energiegedrag.nl`. The public API route must not pass `/admin`.
-4. Open the Cockpit and paste the admin token. It is kept in `sessionStorage` and is gone when the tab closes.
+3. For the flash station, run the firmware mirror and share its volume with the Cockpit at `/usr/share/nginx/html/firmware` (read-only):
+   ```shell
+   docker build -t energiegedrag-firmware-mirror mirror
+   docker run -d --name firmware-mirror -v firmware:/firmware energiegedrag-firmware-mirror
+   ```
+   It mirrors the releases of the NeedForHeat firmware repositories every 6 hours (`FIRMWARE_REPOS`, `MIRROR_INTERVAL`), checks each zip against the SHA-256 GitHub reports, derives the flash offsets from the bootloader header, the `sdkconfig` at the release tag and the partition table, and refuses builds with secure boot or flash encryption.
+4. Publish it **only on the LAN or via a VPN** (a reverse-proxy rule that admits local addresses only), for example as `cockpit.energiegedrag.nl`. The public API route must not pass `/admin`.
+5. Open the Cockpit and paste the admin token. It is kept in `sessionStorage` and is gone when the tab closes.
 
 nginx serves the Cockpit and proxies `/api/` to the API, so browser and API share one origin (no CORS) and the token is only sent to that host.
 
@@ -51,6 +59,7 @@ npm install
 NFH_API=http://localhost:8080 npm run dev   # Vite proxies /api to NFH_API
 npm test                                   # unit tests (Vitest)
 npm run build                              # typecheck and production build in dist/
+python -m unittest discover -s mirror      # firmware mirror tests
 ```
 
 Stack: TypeScript, React 18, Vite, TanStack Query. API types: [`src/types.ts`](src/types.ts), matching package `needforheat/cockpit` of the server.
@@ -59,11 +68,13 @@ Stack: TypeScript, React 18, Vite, TanStack Query. API types: [`src/types.ts`](s
 Ready:
 * campaign overview, creation and settings;
 * invitations with link and QR code, new link for a lost invitation;
-* monitoring per participant and data source, refreshed every minute.
+* monitoring per participant and data source, refreshed every minute;
+* flash station (Web Serial, esptool-js) with firmware mirror, labels and device inventory.
 
 To-do:
 * set up apps, device types and data source lists in the Cockpit (now: runbook);
-* flash station: Web Serial + esptool-js, device inventory, labels;
+* per-device NVS image (server host name, Bluetooth addresses) and Bluetooth provisioning from the browser;
+* test the flash station on hardware;
 * OIDC login with roles and an audit log;
 * invitations and reminders by mail from the server;
 * export per campaign for analysis.
@@ -83,4 +94,4 @@ Author:
 
 The Cockpit builds on ideas developed while working on [NeedForHeat](https://github.com/energietransitie) at Windesheim University of Applied Sciences.
 
-Built on [React](https://react.dev), [Vite](https://vitejs.dev), [TanStack Query](https://tanstack.com/query) and [node-qrcode](https://github.com/soldair/node-qrcode).
+Built on [React](https://react.dev), [Vite](https://vitejs.dev), [TanStack Query](https://tanstack.com/query), [node-qrcode](https://github.com/soldair/node-qrcode) and [esptool-js](https://github.com/espressif/esptool-js); the firmware manifest follows [ESP Web Tools](https://github.com/esphome/esp-web-tools).

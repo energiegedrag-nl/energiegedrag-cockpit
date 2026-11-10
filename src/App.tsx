@@ -6,13 +6,25 @@ import { Login } from "./pages/Login";
 import { OverviewPage } from "./pages/OverviewPage";
 import { CampaignPage } from "./pages/CampaignPage";
 import { NewCampaignPage } from "./pages/NewCampaignPage";
+import { FlashStationPage } from "./pages/FlashStationPage";
+import { InventoryDevicePage, InventoryPage } from "./pages/InventoryPage";
 
-type Route = { page: "overview" } | { page: "campaign"; id: number } | { page: "new" };
+type Route =
+  | { page: "overview" }
+  | { page: "campaign"; id: number }
+  | { page: "new" }
+  | { page: "flash" }
+  | { page: "inventory" }
+  | { page: "device"; id: number };
 
 function parseRoute(hash: string): Route {
   const campaign = /^#\/campagne\/(\d+)$/.exec(hash);
   if (campaign) return { page: "campaign", id: Number(campaign[1]) };
+  const device = /^#\/voorraad\/(\d+)$/.exec(hash);
+  if (device) return { page: "device", id: Number(device[1]) };
   if (hash === "#/nieuw") return { page: "new" };
+  if (hash === "#/flashstation") return { page: "flash" };
+  if (hash === "#/voorraad") return { page: "inventory" };
   return { page: "overview" };
 }
 
@@ -63,6 +75,12 @@ export function App() {
           <a href="#/nieuw" aria-current={route.page === "new" ? "page" : undefined}>
             Nieuwe campagne
           </a>
+          <a href="#/flashstation" aria-current={route.page === "flash" ? "page" : undefined}>
+            Flashstation
+          </a>
+          <a href="#/voorraad" aria-current={route.page === "inventory" || route.page === "device" ? "page" : undefined}>
+            Voorraad
+          </a>
           <button type="button" className="link" onClick={logout}>
             Uitloggen
           </button>
@@ -72,6 +90,9 @@ export function App() {
         {route.page === "overview" && <OverviewPage />}
         {route.page === "campaign" && <CampaignPage id={route.id} />}
         {route.page === "new" && <NewCampaignPage />}
+        {route.page === "flash" && <FlashStationPage />}
+        {route.page === "inventory" && <InventoryPage />}
+        {route.page === "device" && <InventoryDevicePage key={route.id} id={route.id} />}
       </main>
     </div>
   );

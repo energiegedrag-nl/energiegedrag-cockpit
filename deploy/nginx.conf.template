@@ -19,6 +19,13 @@ server {
         access_log off;
     }
 
+    # Firmware mirror (volume written by the firmware-mirror service). Same origin, so the flash station can fetch and
+    # check the images without CORS. No fallback to index.html: a missing file is a 404.
+    location /firmware/ {
+        try_files $uri =404;
+        expires -1;
+    }
+
     # No add_header in locations: that would drop the security headers above (nginx does not merge them).
     location /assets/ {
         expires 1y;
