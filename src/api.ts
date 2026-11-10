@@ -14,7 +14,7 @@ import type {
 // The Cockpit talks to needforheat-server-api through `/api` on its own origin (nginx or the Vite dev server proxies it).
 const BASE = "/api";
 
-// The local vault with participant data runs on its own origin (docs/23), so this page cannot reach its storage.
+// The local vault with participant data runs on its own origin (docs/26), so this page cannot reach its storage.
 export const KLUIS_URL: string = import.meta.env.VITE_KLUIS_URL ?? "https://kluis.energiegedrag.nl/";
 const TOKEN_KEY = "cockpit.adminToken";
 
