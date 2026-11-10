@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import type { Invitation } from "../types";
 
-export function QR({ text, size = 148 }: { text: string; size?: number }) {
+export function QR({ text, size = 148, alt = "QR-code van de uitnodigingslink" }: { text: string; size?: number; alt?: string }) {
   const [src, setSrc] = useState<string | null>(null);
   useEffect(() => {
     let alive = true;
@@ -13,7 +13,7 @@ export function QR({ text, size = 148 }: { text: string; size?: number }) {
       alive = false;
     };
   }, [text, size]);
-  return src ? <img className="qr" src={src} width={size} height={size} alt="QR-code van de uitnodigingslink" /> : <div className="qr" style={{ width: size, height: size }} />;
+  return src ? <img className="qr" src={src} width={size} height={size} alt={alt} /> : <div className="qr" style={{ width: size, height: size }} />;
 }
 
 export function CopyButton({ text, label = "Kopieer link" }: { text: string; label?: string }) {

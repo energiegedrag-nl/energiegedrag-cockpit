@@ -1,4 +1,14 @@
-import type { CampaignStatus, CampaignUpdate, Campaign, Invitation, NewCampaign, Overview } from "./types";
+import type {
+  CampaignStatus,
+  CampaignUpdate,
+  Campaign,
+  FlashReport,
+  InventoryChange,
+  InventoryDevice,
+  Invitation,
+  NewCampaign,
+  Overview,
+} from "./types";
 
 // The Cockpit talks to needforheat-server-api through `/api` on its own origin (nginx or the Vite dev server proxies it).
 const BASE = "/api";
@@ -66,6 +76,11 @@ export const api = {
   createCampaign: (campaign: NewCampaign) => request<{ id: number }>("POST", "/campaign", campaign),
   invite: (campaignId: number, count: number) => request<Invitation[]>("POST", `/admin/campaigns/${campaignId}/accounts`, { count }),
   newInvitation: (accountId: number) => request<Invitation>("POST", `/admin/accounts/${accountId}/invitation`),
+  inventory: () => request<InventoryDevice[]>("GET", "/admin/inventory"),
+  inventoryDevice: (id: number) => request<InventoryDevice>("GET", `/admin/inventory/${id}`),
+  inventoryByMac: (mac: string) => request<InventoryDevice>("GET", `/admin/inventory/mac/${mac.replace(/:/g, "")}`),
+  recordFlash: (report: FlashReport) => request<InventoryDevice>("POST", "/admin/inventory/flash", report),
+  inventoryEvent: (id: number, change: InventoryChange) => request<InventoryDevice>("POST", `/admin/inventory/${id}/events`, change),
 };
 
 export function explain(error: unknown): string {

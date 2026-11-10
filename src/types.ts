@@ -89,3 +89,49 @@ export interface NewCampaign {
   end_time?: number;
   data_source_list: { name: string };
 }
+
+// Device inventory of the flash station (package needforheat/inventory).
+export type InventoryState = "flashed" | "assigned" | "shipped" | "returned" | "erased";
+export type InventoryEventName = "flash" | "assign" | "ship" | "return" | "erase" | "note";
+
+export interface InventoryEvent {
+  id: number;
+  at: number;
+  event: InventoryEventName;
+  state: InventoryState;
+  account_id: number | null;
+  details: string;
+}
+
+export interface InventoryDevice {
+  id: number;
+  mac: string;
+  chip: string;
+  device_type: string;
+  name: string;
+  firmware: string;
+  firmware_version: string;
+  state: InventoryState;
+  account_id: number | null;
+  note: string;
+  created_at: number;
+  updated_at: number;
+  in_use: { account_id: number; campaign_id: number; activated_at: number | null } | null;
+  events?: InventoryEvent[];
+}
+
+export interface FlashReport {
+  mac: string;
+  chip: string;
+  device_type: string;
+  name: string;
+  firmware: string;
+  firmware_version: string;
+  force?: boolean;
+}
+
+export interface InventoryChange {
+  event: Exclude<InventoryEventName, "flash">;
+  account_id?: number;
+  details?: string;
+}

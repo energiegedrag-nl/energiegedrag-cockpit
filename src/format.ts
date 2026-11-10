@@ -1,4 +1,4 @@
-import type { AccountState, CampaignState, SourceState } from "./types";
+import type { AccountState, CampaignState, InventoryEventName, InventoryState, SourceState } from "./types";
 
 export const campaignStateLabel: Record<CampaignState, string> = {
   planned: "Gepland",
@@ -19,6 +19,28 @@ export const sourceStateLabel: Record<SourceState, string> = {
   ok: "Op tijd",
   late: "Te laat",
 };
+
+export const inventoryStateLabel: Record<InventoryState, string> = {
+  flashed: "Op voorraad",
+  assigned: "Toegewezen",
+  shipped: "Uitgegeven",
+  returned: "Retour",
+  erased: "Gewist",
+};
+
+export const inventoryEventLabel: Record<InventoryEventName, string> = {
+  flash: "Geflasht",
+  assign: "Toegewezen",
+  ship: "Uitgegeven",
+  return: "Retour ontvangen",
+  erase: "Gewist",
+  note: "Notitie",
+};
+
+/** "energiegedrag-nl/needforheat-p1-reader-firmware" -> "p1-reader" */
+export function firmwareLabel(repo: string): string {
+  return repo.replace(/^.*\//, "").replace(/^(needforheat|twomes)-/, "").replace(/-firmware$/, "");
+}
 
 export const categoryLabel: Record<string, string> = {
   device_type: "Meetapparaat",
