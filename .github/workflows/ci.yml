@@ -69,7 +69,7 @@ jobs:
       - run: pip install pytest==8.3.3 cryptography==44.0.0
       - run: python -m pytest -v kluis/tests
       - name: JavaScript syntax
-        run: node --check kluis/web/app.js && node --check kluis/web/worker.js
+        run: node --check kluis/web/app.js && cp kluis/web/worker.js /tmp/worker.mjs && node --check /tmp/worker.mjs
       - uses: actions/cache@v4
         with:
           path: kluis/.pyodide-cache

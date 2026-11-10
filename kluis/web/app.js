@@ -60,7 +60,7 @@ function startWorker() {
     clock.textContent = `${s} s` + (s > 60 ? " · duurt lang: kijk in de console van de browser (F12) als er niets meer gebeurt" : "");
   }, 1000);
 
-  worker = new Worker("worker.js");
+  worker = new Worker("worker.js", { type: "module" }); // this Pyodide only runs in a module worker
   worker.onmessage = (e) => {
     if (e.data.type === "status") {
       line.textContent = e.data.text;

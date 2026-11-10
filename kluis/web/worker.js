@@ -1,7 +1,7 @@
 // Web Worker of the vault: runs Python (Pyodide) with the kluis package. The secret key and the open database live
 // only here; the page terminates this worker to lock the vault. No network: everything is loaded from this origin
 // at start, checked against kluis.json, and the Python package itself does no requests (tests/test_kern.py).
-"use strict";
+import { loadPyodide } from "./pyodide/pyodide.mjs";
 
 const BASE = new URL("./", self.location.href).href;
 const PYODIDE = new URL("pyodide/", BASE).href;
@@ -16,7 +16,7 @@ async function sha256(buffer) {
 
 async function start() {
   status("Python laden (Pyodide, eenmalig ongeveer 12 MB)…");
-  importScripts(PYODIDE + "pyodide.js");
+  // module worker: pyodide.mjs is imported above
   const infoPromise = fetch(new URL("kluis.json", BASE), { cache: "no-cache" }).then((r) => r.json());
   const pyodide = await loadPyodide({ indexURL: PYODIDE });
   status("Versleutelingsbibliotheek laden (cryptography)…");

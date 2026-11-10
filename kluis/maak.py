@@ -34,7 +34,8 @@ REPO = "https://github.com/energiegedrag-nl/energiegedrag-cockpit"
 
 PYODIDE_VERSION = "314.0.7"
 PYODIDE_URL = "https://cdn.jsdelivr.net/pyodide/v{versie}/full/{naam}"
-RUNTIME = ["pyodide.js", "pyodide.asm.mjs", "pyodide.asm.wasm", "python_stdlib.zip", "pyodide-lock.json"]
+RUNTIME = ["pyodide.mjs", "pyodide.asm.mjs", "pyodide.asm.wasm", "python_stdlib.zip", "pyodide-lock.json"]
+# pyodide.mjs: the worker is a module worker (this Pyodide refuses classic workers).
 PACKAGES = ["cryptography"]  # sqlite3 is part of the standard library in this Pyodide
 WEB_FILES = ["index.html", "app.js", "worker.js", "kluis.css", "controleer.html"]
 ZIP_TIME = (2026, 1, 1, 0, 0, 0)
