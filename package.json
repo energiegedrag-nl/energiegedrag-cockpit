@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "description": "Energiegedrag Cockpit: set up campaigns, invite participants and monitor data collection",
-  "license": "Apache-2.0",
+  "license": "EUPL-1.2",
   "type": "module",
   "scripts": {
     "dev": "vite",
