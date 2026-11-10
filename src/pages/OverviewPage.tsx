@@ -96,7 +96,7 @@ export function OverviewPage() {
               ))}
             </ul>
           )}
-          <p className="hint">Apps, apparaattypes en lijsten maak je nu nog met het draaiboek in docs/21; dat komt in een volgende versie in de Cockpit.</p>
+          <p className="hint">Apps, apparaattypes en lijsten maak je nu nog via de beheer-API van needforheat-server-api; dat komt in een volgende versie in de Cockpit.</p>
         </div>
       </section>
     </>

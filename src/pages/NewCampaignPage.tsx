@@ -51,7 +51,7 @@ export function NewCampaignPage() {
         <h1>Nieuwe campagne</h1>
         <p className="panel">
           Voor een campagne zijn een app en een databronnenlijst nodig. {apps.length === 0 ? "Er is nog geen app. " : ""}
-          {lists.length === 0 ? "Er is nog geen databronnenlijst. " : ""}Richt die eerst in met het draaiboek (docs/21).
+          {lists.length === 0 ? "Er is nog geen databronnenlijst. " : ""}Richt die eerst in via de beheer-API van needforheat-server-api.
         </p>
       </>
     );
