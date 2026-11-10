@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: EUPL-1.2
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import type { Invitation } from "../types";

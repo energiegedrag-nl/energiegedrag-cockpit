@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: EUPL-1.2
 import type { AccountState, CampaignState, SourceState } from "./types";
 
 export const campaignStateLabel: Record<CampaignState, string> = {

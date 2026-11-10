@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: EUPL-1.2
 import { useQuery } from "@tanstack/react-query";
 import { api, explain } from "../api";
 import { campaignStateLabel, formatDate, formatDateTime } from "../format";

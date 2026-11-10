@@ -1,10 +1,11 @@
+// SPDX-License-Identifier: EUPL-1.2
 import type { CampaignStatus, CampaignUpdate, Campaign, Invitation, NewCampaign, Overview } from "./types";
 
 // The Cockpit talks to needforheat-server-api through `/api` on its own origin (nginx or the Vite dev server proxies it).
 const BASE = "/api";
 const TOKEN_KEY = "cockpit.adminToken";
 
-// The admin token lives in sessionStorage only: it is gone when the tab closes (design docs/22, phase 1).
+// The admin token lives in sessionStorage only: it is gone when the tab closes (design docs/ontwerp.md, phase 1).
 export function getToken(): string | null {
   try {
     return sessionStorage.getItem(TOKEN_KEY);
