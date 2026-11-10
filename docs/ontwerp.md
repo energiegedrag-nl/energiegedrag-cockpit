@@ -1,6 +1,6 @@
 # Ontwerp: Energiegedrag Cockpit (campagnebeheer en firmware-uitrol vanuit de browser)
 
-**Herkomst:** backlogkaart **#966 *NeedForHeat Cockpit: Data collection and analysis web portal*** (bedoeld als afstudeeropdracht HBO-ICT), met de verwante kaarten #716 (research data management), #1235 (pseudonieme authenticatie, Yivi/OIDC), #1041 (bewaken of data blijft binnenkomen), #347 (gefaseerde OTA) en #1109 (teruggekomen apparaten wissen).
+**Herkomst:** dit ontwerp bouwt voort op ideeën die zijn ontwikkeld tijdens het werk aan [NeedForHeat](https://github.com/energietransitie) bij Windesheim, waar een webportaal voor onderzoekers oorspronkelijk als afstudeeropdracht HBO-ICT was bedacht.
 
 **Status:** ontwerp 08-11-2026. Fase 1, stap 1–4 gebouwd op 10-11-2026, nog niet uitgerold:
 - beheer-API in [needforheat-server-api#22](https://github.com/energiegedrag-nl/needforheat-server-api/pull/22): `GET /admin/overview`, `GET /admin/campaigns/{id}/status`, `PATCH /admin/campaigns/{id}`, `POST /admin/campaigns/{id}/accounts`, `POST /admin/accounts/{id}/invitation`;
@@ -20,7 +20,7 @@ Afwijkingen van dit ontwerp:
 - het label wordt direct na het flashen geprint uit de console-uitvoer; de QR-inhoud (met het apparaatgeheim) wordt niet opgeslagen, dus herprinten = opnieuw wissen en flashen;
 - de levenscyclus is *geflasht → toegewezen → uitgegeven → retour → gewist*; "actief" volgt uit de `device`-tabel (zelfde naam, door de app geactiveerd) en wordt niet apart bijgehouden.
 
-## 1. Wat #966 vraagt
+## 1. Wat het portaal moet doen
 
 Een webportaal voor "energiedokters" (eerst onderzoekers, later energieadviseurs) dat:
 1. **werving** ondersteunt: intakeformulier, toestemming (pseudoniem), in-/exclusiecriteria;
@@ -37,7 +37,7 @@ Een webportaal voor "energiedokters" (eerst onderzoekers, later energieadviseurs
 | Frontend | **TypeScript, React + Vite + TanStack Query**, statisch geserveerd | Zelfde stack als de app: de **zod-schema's uit `apps/expo/src/types/api.ts` zijn herbruikbaar** (gedeeld pakket in de monorepo of eigen repo) |
 | Backend | **Geen aparte backend**: de Cockpit praat met `needforheat-server-api`, die een **beheer-API** krijgt (lijsten, wijzigen, status) | De server had alleen `POST`-aanmaakroutes voor beheer; die uitbreiding is hoe dan ook nodig |
 | Hosting | Statische bestanden (nginx) naast de API; host `cockpit.energiegedrag.nl`, via de reverse proxy **alleen LAN/VPN** | Geen nieuw publiek oppervlak; HTTPS is nodig voor Web Serial en Web Bluetooth (secure context) |
-| Inloggen | Fase 1: beheertoken (uit een wachtwoordkluis) in `sessionStorage`, alleen via LAN/VPN. Fase 2: **OIDC** (Keycloak of Authentik; voor deelnemers later Yivi, #1235) met rollen; de server-API valideert OIDC-tokens naast de eigen JWT's | Fase 1 is genoeg voor één beheerder; fase 2 voor meerdere onderzoekers |
+| Inloggen | Fase 1: beheertoken (uit een wachtwoordkluis) in `sessionStorage`, alleen via LAN/VPN. Fase 2: **OIDC** (Keycloak of Authentik; voor deelnemers later Yivi) met rollen; de server-API valideert OIDC-tokens naast de eigen JWT's | Fase 1 is genoeg voor één beheerder; fase 2 voor meerdere onderzoekers |
 | Firmware in de browser | **Web Serial + `esptool-js`** (Espressif, Apache-2.0; 0.7.1 van 02-11-2026), met het manifest-formaat van **ESP Web Tools** (Apache-2.0; 10.4.0) | Officieel, onderhouden, geen installatie op de laptop |
 | Provisionen vanuit de browser (optioneel) | **Web Bluetooth + `esp-idf-provisioning-web`** (MIT; security 1 via WebCrypto X25519) | Testen in het lab zonder telefoon; *geen* vervanging van de app (iOS/Safari heeft geen Web Bluetooth) |
 
@@ -49,27 +49,27 @@ Een webportaal voor "energiedokters" (eerst onderzoekers, later energieadviseurs
 | Campagnebeheerder (onderzoeker) | campagne opzetten, deelnemers uitnodigen, voortgang volgen, herinneren | 1 |
 | Uitrol-medewerker (lab) | apparaten flashen, labelen, aan een deelnemer toewijzen, retouren wissen | 1 |
 | Energieadviseur | eigen klanten volgen, alleen leesrechten op hun data | 3 |
-| Deelnemer | eigen data inzien, toestemming beheren (#1235) | 3 |
+| Deelnemer | eigen data inzien, toestemming beheren | 3 |
 
 ## 4. Functies per fase
 
 **Fase 1: kleine campagnes (MVP)**
 1. **Inrichting** (vervangt het handmatige `curl`-draaiboek): app(s), apparaattypes, cloudfeed- en energy-query-types, databronnen met handleiding-URL's en schema's, databronnenlijsten, campagnes.
 2. **Deelnemers en uitnodigingen:** account aanmaken binnen een campagne; uitnodigingslink tonen, als **QR-code** printen en via `mailto:` versturen (fase 2: server-side mail, met sjabloon); status *uitgenodigd → geactiveerd → actief → gestopt*.
-3. **Bewaking (#1041):** per deelnemer per databron: laatste upload, verwachte volgende upload (uit `upload_schedule`), achterstand ten opzichte van `notification_threshold`; campagnestatus; lijst "aandacht nodig". Dezelfde logica als de app (`checkMissedUpload`), maar dan op de server berekend.
+3. **Bewaking:** per deelnemer per databron: laatste upload, verwachte volgende upload (uit `upload_schedule`), achterstand ten opzichte van `notification_threshold`; campagnestatus; lijst "aandacht nodig". Dezelfde logica als de app (`checkMissedUpload`), maar dan op de server berekend.
 4. **Flashstation** (§ 6): apparaat aan USB, firmware kiezen (passend bij de campagne), flashen, identiteit uitlezen (MAC, QR-naam), registreren in de **apparaatvoorraad**, label met QR printen.
-5. **Apparaatvoorraad:** levenscyclus *voorraad → geflasht → toegewezen → verzonden → actief → retour → gewist (#1109) → voorraad*, met firmwareversie en historie.
+5. **Apparaatvoorraad:** levenscyclus *voorraad → geflasht → toegewezen → verzonden → actief → retour → gewist → voorraad*, met firmwareversie en historie.
 
 **Fase 2: meerdere onderzoekers**
 - OIDC-login en rollen; audit-log van beheeracties.
 - Mail en herinneringen server-side (sjablonen, planning, afmelden).
-- **Eigen firmware-updatekanaal** (#347): apparaten vragen de server om een update in plaats van de GitHub-API (die 60 verzoeken per uur per IP toestaat en waarvan de TLS-keten kan veranderen). De Cockpit bepaalt per campagne of apparaattype welke versie en voor welk percentage (gefaseerde uitrol).
+- **Eigen firmware-updatekanaal**: apparaten vragen de server om een update in plaats van de GitHub-API (die 60 verzoeken per uur per IP toestaat en waarvan de TLS-keten kan veranderen). De Cockpit bepaalt per campagne of apparaattype welke versie en voor welk percentage (gefaseerde uitrol).
 - Export voor analyse (Parquet/CSV per campagne), aansluitend op de bestaande preprocessing.
 
 **Fase 3: werving en deelnemers**
-- **Intake en toestemming:** LimeSurvey (open source) voor vragenlijsten en in-/exclusie; toestemming cryptografisch vastleggen en pseudonieme login via Yivi/OIDC met pairwise identifiers (#1235). De Cockpit bewaart alleen een pseudoniem en de koppeling naar het account; **geen namen of e-mailadressen in de NeedForHeat-database** (die staan in de [kluis](kluis.md), bij de beheerder).
+- **Intake en toestemming:** LimeSurvey (open source) voor vragenlijsten en in-/exclusie; toestemming cryptografisch vastleggen en pseudonieme login via Yivi/OIDC met pairwise identifiers. De Cockpit bewaart alleen een pseudoniem en de koppeling naar het account; **geen namen of e-mailadressen in de NeedForHeat-database** (die staan in de [kluis](kluis.md), bij de beheerder).
 - **Helpdesk:** Zammad of FreeScout (open source), met een link vanuit de deelnemerspagina in de Cockpit en een "meld een probleem" in de app.
-- Portaal voor deelnemers en energieadviseurs (eigen data inzien; EU Data Act, #1231).
+- Portaal voor deelnemers en energieadviseurs (eigen data inzien; EU Data Act).
 
 ## 5. Architectuur
 
@@ -115,7 +115,7 @@ Een webportaal voor "energiedokters" (eerst onderzoekers, later energieadviseurs
 ### Per-apparaatgegevens via NVS
 
 - De firmware leest per-apparaatinstellingen uit de NVS-partitie (`nvs.csv` in de repo's: nu `twomes_storage/mac_addresses`, de statische Bluetooth-adressen voor aanwezigheidsdetectie).
-- De Cockpit laat de server een **NVS-image per apparaat** maken met Espressifs `esp-idf-nvs-partition-gen` (Python, Apache-2.0) en flasht dat mee op de NVS-offset. Daarmee kunnen per huishouden de Bluetooth-adressen (#104, #117) en, na een kleine firmwarewijziging, de **serverhostnaam** en de campagne zonder herbouwen worden meegegeven.
+- De Cockpit laat de server een **NVS-image per apparaat** maken met Espressifs `esp-idf-nvs-partition-gen` (Python, Apache-2.0) en flasht dat mee op de NVS-offset. Daarmee kunnen per huishouden de Bluetooth-adressen en, na een kleine firmwarewijziging, de **serverhostnaam** en de campagne zonder herbouwen worden meegegeven.
 
 ### Stroom op het flashstation
 
@@ -126,7 +126,7 @@ Een webportaal voor "energiedokters" (eerst onderzoekers, later energieadviseurs
 4. Flashen (bootloader, partitietabel, otadata, app, NVS) met voortgangsbalk; daarna verify (MD5 per deel, door esptool-js)
 5. Herstart en seriële console in de browser: wachten op de regel met QR-payload (naam + pop) → registreren
 6. Label printen (QR van het apparaat + intern voorraadnummer); optioneel direct toewijzen aan een deelnemer
-7. Retour (#1109): "Wissen" = volledig flash wissen + fabrieksfirmware, voorraadstatus terug, koppeling met account verbreken
+7. Retour: "Wissen" = volledig flash wissen + fabrieksfirmware, voorraadstatus terug, koppeling met account verbreken
 ```
 
 ### Optioneel: provisionen vanuit de browser
@@ -149,7 +149,7 @@ inventory_event(id, inventory_device_id, at, actor, event, details JSON)      --
 campaign_state(campaign_id, state, changed_at)                                -- concept, loopt, sluit af, gesloten
 account_state(account_id, state, invited_at, activated_at, stopped_at)       -- uitgenodigd, actief, gestopt
 firmware_release(id, device_type_id, tag, sha256, manifest_path, published_at, channel)
-firmware_rollout(id, release_id, campaign_id NULL, percentage, started_at)   -- fase 2 (#347)
+firmware_rollout(id, release_id, campaign_id NULL, percentage, started_at)   -- fase 2
 audit_log(id, at, actor, action, object, details JSON)                         -- fase 2
 ```
 
@@ -159,7 +159,7 @@ audit_log(id, at, actor, action, object, details JSON)                         -
 - Geen persoonsgegevens in NeedForHeat (pseudoniemen); contactgegevens alleen in de [kluis](kluis.md) bij de beheerder, of in de wervings- of helpdesktool, met een eigen bewaartermijn.
 - Firmware alleen flashen na SHA-256-controle tegen het manifest; manifest en binaries van dezelfde origin.
 - Uitnodigingstokens en apparaattokens nooit loggen (zoals al bij de landingspagina).
-- Tokenlevensduur (#717) en het intrekken van accounts horen bij fase 2.
+- Tokenlevensduur en het intrekken van accounts horen bij fase 2.
 
 ## 9. Aanpak
 
@@ -172,7 +172,7 @@ audit_log(id, at, actor, action, object, details JSON)                         -
 | 5 | ESP-IDF 5.5 (parallel, apart traject in de firmware-repo's, met hardwaretests) | 3–6 weken |
 | 6 | Fase 2 en 3 (OIDC, mail, eigen OTA, werving, helpdesk) | afstudeeropdracht(en) |
 
-Stap 1–4 passen goed als afstudeeropdracht HBO-ICT (zoals #966 bedoelde); stap 5 als opdracht Embedded/Elektrotechniek.
+Stap 1–4 passen goed als afstudeeropdracht HBO-ICT (zoals oorspronkelijk bedacht); stap 5 als opdracht Embedded/Elektrotechniek.
 
 ## Bronnen
 

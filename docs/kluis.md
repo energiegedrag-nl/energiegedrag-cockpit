@@ -10,7 +10,7 @@
 Lokaal rondklikken kan met `tools/mock_server.py`.
 - Cockpit: [#3](https://github.com/energiegedrag-nl/energiegedrag-cockpit/pull/3), map `kluis/`.
 - Server: [needforheat-server-api#25](https://github.com/energiegedrag-nl/needforheat-server-api/pull/25).
-- Vervolg in de TODO van de server-api: `cockpitvault` (mail via mailcow, helpdeskalias) en `cockpitflow` (stappenplan, oefencampagne).
+- Vervolg in de TODO van de server-api: `cockpitvault` (mail via de mailserver van energiegedrag.nl, helpdeskalias) en `cockpitflow` (stappenplan, oefencampagne).
 
 Hoort bij het [ontwerp van de Cockpit](ontwerp.md), fase 2 "uitnodigingen".
 
@@ -31,7 +31,7 @@ NeedForHeat zelf is pseudoniem: de server kent accountnummers, geen namen. Maar 
 | Eigen mailserver | Via het **eigen mailprogramma** (mailto, .eml, samenvoeg-CSV); geen mailwachtwoorden in Cockpit of server | Zie § 5 |
 | Mail via energiegedrag.nl | Mag alleen als de **beheerder dat per campagne aanzet** | Niet elke campagne mag zomaar namens het domein mailen |
 | Helpdesk | Een **alias per campagne** (`helpdesk-<campagne>@energiegedrag.nl`) die doorstuurt naar de beheerder | Deelnemers zien het eigen adres van de beheerder niet; de beheerder zet de alias aan of uit |
-| Aanpak | Ontwerp + eerste werkende versie; mail via mailcow en de alias in mailcow daarna | Bijsturen voordat het groot wordt |
+| Aanpak | Ontwerp + eerste werkende versie; mail via de eigen mailserver en de helpdeskalias daarna | Bijsturen voordat het groot wordt |
 
 ## 3. Sleutels: symmetrisch of asymmetrisch?
 
@@ -79,8 +79,8 @@ Wat de Cockpit daarvoor maakt:
 
 **Mail via energiegedrag.nl** (later, TODO `cockpitvault`):
 - Alleen voor campagnes waar de beheerder het aanzet: `PUT /admin/campaigns/{id}/mail`, standaard uit.
-- De server stuurt dan via een eigen verzendaccount in mailcow. De server ziet ontvanger en inhoud van wat hij verstuurt, en mailcow logt ontvangers; dat noemt `controleer.html`.
-- De helpdeskalias wordt een doorstuuradres in mailcow.
+- De server stuurt dan via een eigen verzendaccount op de mailserver van energiegedrag.nl. De server ziet ontvanger en inhoud van wat hij verstuurt, en de mailserver logt ontvangers; dat noemt `controleer.html`.
+- De helpdeskalias wordt een doorstuuradres op die mailserver.
 
 ## 6. Herkenbaar anders
 
