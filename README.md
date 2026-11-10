@@ -1,10 +1,11 @@
-# Generic software repository template   
-This is a template repository for software published by the energiegedrag-nl.
+# Energiegedrag Cockpit
+
+Web portal in which researchers set up [NeedForHeat](https://github.com/energiegedrag-nl/needforheat-server-api) campaigns, invite participants and see per participant and per data source whether measurements keep coming in.
 
 ## Table of contents
 * [General info](#general-info)
 * [Deploying](#deploying)
-* [Developing](#developing) 
+* [Developing](#developing)
 * [Features](#features)
 * [Contributing](#contributing)
 * [Status](#status)
@@ -12,69 +13,74 @@ This is a template repository for software published by the energiegedrag-nl.
 * [Credits](#credits)
 
 ## General info
-Include general information about your repository here. What is purpose of the code in the repo? Motivation? 
+A NeedForHeat campaign used to be set up and followed with `curl` calls and database queries. The Cockpit puts that in a browser:
+
+- **Campaigns**: overview with state (planned, running, ended), number of participants and how many activated the app; create a campaign from an existing app and data source list; change info page, start and end date.
+- **Invitations**: create any number of pseudonymous participant accounts at once, each with a personal activation link and QR code to print or send. Links are shown once; a participant who lost one gets a new link.
+- **Monitoring**: a table of participants × data sources with the latest upload and a state (on time, waiting for first data, late, not connected). *Late* uses each data source's `notification_threshold`, the same rule the app uses to warn participants. Filters for *attention needed*, *incomplete* and *invited*.
+
+The Cockpit stores no names or e-mail addresses: participants are account numbers. Keep the link between a person and a number in your own administration.
+
+The design is described in [docs/ontwerp.md](docs/ontwerp.md) and [docs/kluis.md](docs/kluis.md) (Dutch). The interface is in Dutch. Later phases (flashing devices from the browser, device inventory, OIDC login, server-side mail) are listed in the [`cockpit` TODO](https://github.com/energiegedrag-nl/needforheat-server-api/blob/main/TODO.md#cockpit).
 
 ## Deploying
-This section describes how you can deploy binary releases of the firmware, i.e. without changing the source code, without a development environment and without needing to compile the source code.
 
 ### Prerequisites
-Describe which (hardware and) software you need before you can deploy the software. If the prerequisites are different the same for deploying users and developing users, you may want to merge the prerequisites sections.
+- `needforheat-server-api` with the `/admin` routes ([PR #22](https://github.com/energiegedrag-nl/needforheat-server-api/pull/22));
+- an admin token: `docker compose exec api needforheat-server-api admin create -n <name> -e <yyyy-mm-dd>`;
+- Docker, on the same Docker network as the API.
 
-### Other steps 
-Describe how the reader can download and install the lastest installable version(s). If appropriate, link to the latest binary release or package you published in the repo. If needed, describe this for different platforms.
-Use steps if the procedure is non-trivial:
-1. first step;
-2. second step;
-3. final step.
+### Steps
+1. Build the image: `docker build -t energiegedrag-cockpit .`
+2. Run it next to the API; `API_UPSTREAM` is where nginx finds the API (default `http://api:8080`):
+   ```shell
+   docker run -d --name cockpit --network <api-network> -e API_UPSTREAM=http://api:8080 energiegedrag-cockpit
+   ```
+3. Publish it **only on the LAN or via a VPN** (a reverse-proxy rule that admits local addresses only), for example as `cockpit.energiegedrag.nl`. The public API route must not pass `/admin`.
+4. Open the Cockpit and paste the admin token. It is kept in `sessionStorage` and is gone when the tab closes.
 
-Format any scripts or commands in a way that makes them  easy to copy, like the following example. 
-
-Forgotten your Wi-Fi password? No problem with the follwing command, replacing `SSID` with the Wi-Fi name of your own Wi-Fi network: 
-```shell
-netsh wlan show profile SSID key=clear
-```
+nginx serves the Cockpit and proxies `/api/` to the API, so browser and API share one origin (no CORS) and the token is only sent to that host.
 
 ## Developing
-This section describes how you can change the source code using a development environment and compile the source code into a binary release of the firmware that can be deployed, either via the development environment, or via the method described in the section [Deploying](#deploying).
 
 ### Prerequisites
-Describe which (hardware and) software you need before you can change or extend the source code. If the prerequisites are different the same for deploying users and developing users, you may want to merge the prerequisites sections.
+Node.js 22 and a running `needforheat-server-api` (local or through an SSH tunnel).
+
+```shell
+npm install
+NFH_API=http://localhost:8080 npm run dev   # Vite proxies /api to NFH_API
+npm test                                   # unit tests (Vitest)
+npm run build                              # typecheck and production build in dist/
+```
+
+Stack: TypeScript, React 18, Vite, TanStack Query. API types: [`src/types.ts`](src/types.ts), matching package `needforheat/cockpit` of the server.
 
 ## Features
-List of features ready and TODOs for future development. Ready:
-* awesome feature 1;
-* awesome feature 2;
-* awesome feature 3.
+Ready:
+* campaign overview, creation and settings;
+* invitations with link and QR code, new link for a lost invitation;
+* monitoring per participant and data source, refreshed every minute.
 
 To-do:
-* wow improvement to be done 1;
-* wow improvement to be done 2.
+* set up apps, device types and data source lists in the Cockpit (now: runbook);
+* flash station: Web Serial + esptool-js, device inventory, labels;
+* OIDC login with roles and an audit log;
+* invitations and reminders by mail from the server;
+* export per campaign for analysis.
 
 ## Contributing
-See [CONTRIBUTING.md](./CONTRIBUTING.md).
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Status
-Project is: _in progress_, _finished_, _no longer continued_ and why?
+Project is: _in progress_. First version, not yet deployed.
 
 ## License
-This software is available under the [Apache 2.0 license](./LICENSE), Copyright <year> <copyright holder> 
+This software is available under the [European Union Public Licence v1.2 (EUPL-1.2)](LICENSE), © 2026 Henri ter Hofte. Source files carry an `SPDX-License-Identifier: EUPL-1.2` header.
 
 ## Credits
+Author:
+* Henri ter Hofte · [@henriterhofte](https://github.com/henriterhofte)
 
-Author(s):
-* <name> · [@<github_handle>](https://github.com/<github_handle>)
+The Cockpit builds on ideas developed while working on [NeedForHeat](https://github.com/energietransitie) at Windesheim University of Applied Sciences.
 
-Thanks to:
-* <name> · [@<github_handle>](https://github.com/<github_handle>)
-
-If this repository continues an earlier one, say so here, link it, and thank its authors.
-
-We use and gratefully acknowledge the efforts of the makers of the following source code and libraries:
-* [library name 1 and version](library 1 URL), by <copyright holder name 1>, licensed under [license 1 name](license1 URL)
-* [library name 2 and version](library 2 URL), by <copyright holder name 2>, licensed under [license 2 name](license2 URL)
-* [library name 3 and version](library 3 URL), by <copyright holder name 3>, licensed under [license 3 name](license3 URL)
-* etc.
-
-### AI assistance
-
-*(Keep this section only if AI tools contributed.)* Parts of this repository were made with <tool, e.g. [Claude Code](https://claude.com/claude-code) (Anthropic)>, under the author's direction and review. Commits made this way carry a `Co-Authored-By:` trailer. The author remains responsible for all content.
+Built on [React](https://react.dev), [Vite](https://vitejs.dev), [TanStack Query](https://tanstack.com/query) and [node-qrcode](https://github.com/soldair/node-qrcode).
