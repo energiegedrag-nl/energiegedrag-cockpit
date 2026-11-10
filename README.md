@@ -21,7 +21,7 @@ A NeedForHeat campaign used to be set up and followed with `curl` calls and data
 
 The Cockpit stores no names or e-mail addresses: participants are account numbers. Keep the link between a person and a number in your own administration.
 
-The interface is in Dutch. Later phases (flashing devices from the browser, device inventory, OIDC login, server-side mail) are listed in the [`cockpit` TODO](https://github.com/energiegedrag-nl/needforheat-server-api/blob/main/TODO.md#cockpit).
+The design is described in [docs/ontwerp.md](docs/ontwerp.md) and [docs/kluis.md](docs/kluis.md) (Dutch). The interface is in Dutch. Later phases (flashing devices from the browser, device inventory, OIDC login, server-side mail) are listed in the [`cockpit` TODO](https://github.com/energiegedrag-nl/needforheat-server-api/blob/main/TODO.md#cockpit).
 
 ## Deploying
 
@@ -36,7 +36,7 @@ The interface is in Dutch. Later phases (flashing devices from the browser, devi
    ```shell
    docker run -d --name cockpit --network <api-network> -e API_UPSTREAM=http://api:8080 energiegedrag-cockpit
    ```
-3. Publish it **only on the LAN or via WireGuard** (Traefik `lan-only` middleware), for example as `cockpit.energiegedrag.nl`. The public API route must not pass `/admin`.
+3. Publish it **only on the LAN or via a VPN** (a reverse-proxy rule that admits local addresses only), for example as `cockpit.energiegedrag.nl`. The public API route must not pass `/admin`.
 4. Open the Cockpit and paste the admin token. It is kept in `sessionStorage` and is gone when the tab closes.
 
 nginx serves the Cockpit and proxies `/api/` to the API, so browser and API share one origin (no CORS) and the token is only sent to that host.
@@ -80,5 +80,7 @@ This software is available under the [European Union Public Licence v1.2 (EUPL-1
 ## Credits
 Author:
 * Henri ter Hofte · [@henriterhofte](https://github.com/henriterhofte)
+
+The Cockpit builds on ideas developed while working on [NeedForHeat](https://github.com/energietransitie) at Windesheim University of Applied Sciences.
 
 Built on [React](https://react.dev), [Vite](https://vitejs.dev), [TanStack Query](https://tanstack.com/query) and [node-qrcode](https://github.com/soldair/node-qrcode).
