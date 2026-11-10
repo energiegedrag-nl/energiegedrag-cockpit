@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: EUPL-1.2
 """The facade end to end, as the worker uses it: key, vault, participants, invitations, mails, reopen."""
 import base64
 import importlib

@@ -1,4 +1,5 @@
-# Local vault (docs/26): build the static files reproducibly, then serve them with nginx next to the API proxy.
+# SPDX-License-Identifier: EUPL-1.2
+# Local vault (docs/kluis.md): build the static files reproducibly, then serve them with nginx next to the API proxy.
 # Build from the repository root so maak.py sees the git commit (kluis/Dockerfile.dockerignore keeps .git;
 # for a git URL context BuildKit also needs BUILDKIT_CONTEXT_KEEP_GIT_DIR=1):
 #   docker build -f kluis/Dockerfile --build-arg BUILDKIT_CONTEXT_KEEP_GIT_DIR=1 .

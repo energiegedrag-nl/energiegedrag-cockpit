@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: EUPL-1.2
 """Serve the built Cockpit with a fake /api (sample data, nothing real).
 Usage: python -I mock_server.py <dist-dir> [port] [firmware-dir]
 The firmware dir (output of mirror/mirror.py) is served under /firmware/; the inventory lives in memory."""

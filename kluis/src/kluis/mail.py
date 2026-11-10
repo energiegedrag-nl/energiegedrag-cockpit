@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: EUPL-1.2
 """Invitation mails for the campaign manager's own mail program: mailto links, .eml drafts and a merge CSV.
 
 Nothing is sent from here. The mail program of the campaign manager sends, with its own account; no mail

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: EUPL-1.2
 """age format: round trips, tampering, and interoperability with the reference `age` tool when it is installed."""
 import os
 import shutil

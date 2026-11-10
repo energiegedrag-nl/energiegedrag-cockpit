@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: EUPL-1.2
 // Local vault: the shell. Screens, storage (OPFS) and the few server requests. All handling of personal data and keys
 // happens in the worker (Python); this file only passes JSON along. Server requests carry no personal data:
 //   GET  /api/admin/overview                        campaigns (names, ids)

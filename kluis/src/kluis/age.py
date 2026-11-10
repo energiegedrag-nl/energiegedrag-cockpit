@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: EUPL-1.2
 """The age file format, v1 (https://age-encryption.org/v1, C2SP spec), with X25519 and scrypt recipients.
 
 Small on purpose: the vault depends on it, and anyone should be able to read it in one go and check it against the

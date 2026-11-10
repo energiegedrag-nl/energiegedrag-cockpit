@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: EUPL-1.2
 """The vault package does no networking: no module imports a network library."""
 import ast
 from pathlib import Path

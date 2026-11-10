@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: EUPL-1.2
 // Web Worker of the vault: runs Python (Pyodide) with the kluis package. The secret key and the open database live
 // only here; the page terminates this worker to lock the vault. No network: everything is loaded from this origin
 // at start, checked against kluis.json, and the Python package itself does no requests (tests/test_kern.py).

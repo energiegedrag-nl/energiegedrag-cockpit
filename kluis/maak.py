@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: EUPL-1.2
 """Builds the local vault into kluis/dist/: the page, the shell, the worker, the Python package and Pyodide itself.
 
     python kluis/maak.py [--uit MAP] [--commit SHA]

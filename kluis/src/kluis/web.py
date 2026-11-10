@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: EUPL-1.2
 """Facade for the browser: JSON in, JSON out (binary as base64). The Web Worker calls `call(name, args_json)`.
 
 State (the unlocked secret key and the open database) lives only in this Python process, in the memory of the

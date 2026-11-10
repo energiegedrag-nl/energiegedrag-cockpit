@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: EUPL-1.2
 """The participant database of the vault: SQLite in memory, saved as a whole (serialized and age-encrypted).
 
 It links a person (name, contact details) to a pseudonymous NeedForHeat account number. The NeedForHeat server only

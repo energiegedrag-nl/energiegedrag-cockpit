@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: EUPL-1.2
 """Bech32 (BIP 173), as age uses it for keys: age1… and AGE-SECRET-KEY-1…. age lifts the 90-character limit."""
 from __future__ import annotations
 

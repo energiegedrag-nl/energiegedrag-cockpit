@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: EUPL-1.2
 """Check that a live vault serves exactly what this checkout builds.
 
     python kluis/controleer.py https://kluis.energiegedrag.nl/ [--geen-bouw DIST]

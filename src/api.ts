@@ -15,7 +15,7 @@ import type {
 // The Cockpit talks to needforheat-server-api through `/api` on its own origin (nginx or the Vite dev server proxies it).
 const BASE = "/api";
 
-// The local vault with participant data runs on its own origin (docs/26), so this page cannot reach its storage.
+// The local vault with participant data runs on its own origin (docs/kluis.md), so this page cannot reach its storage.
 // Where it lives comes from /config.json (filled in by nginx from KLUIS_URL, or by the mock server); without it the
 // address is derived: cockpit.example.nl -> kluis.example.nl. null: no link.
 // Cockpit and vault each have their own named tab. A link between them activates that tab when it is already open,
