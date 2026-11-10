@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: EUPL-1.2
 // The provisioning QR code a NeedForHeat device logs on its serial console after boot ("QR Code Payload:").
 // Two formats exist (needforheat-generic-firmware, include/util/provisioning_code.hpp):
 //   v1: JSON {"ver":"v1","name":"1A2B-3C4D5E","pop":"…","transport":"ble"}

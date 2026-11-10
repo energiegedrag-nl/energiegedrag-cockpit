@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: EUPL-1.2
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { KLUIS_TAB, api, explain, kluisUrl, openTab } from "../api";

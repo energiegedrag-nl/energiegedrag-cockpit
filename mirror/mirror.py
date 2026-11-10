@@ -1,4 +1,5 @@
-"""Firmware mirror for the Cockpit flash station (docs/22, section 6).
+# SPDX-License-Identifier: EUPL-1.2
+"""Firmware mirror for the Cockpit flash station (docs/ontwerp.md, section 6).
 
 Fetches the GitHub releases of the NeedForHeat firmware repositories, checks every zip against the SHA-256 digest
 GitHub reports, unpacks the images and writes a manifest in the ESP Web Tools format with the flash offsets and a

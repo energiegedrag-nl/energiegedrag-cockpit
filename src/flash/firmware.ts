@@ -1,5 +1,6 @@
+// SPDX-License-Identifier: EUPL-1.2
 // Firmware from the mirror on the Cockpit's own origin (/firmware/, written by mirror/mirror.py).
-// Every part is checked against the SHA-256 in the manifest before it may be flashed (docs/22, section 9).
+// Every part is checked against the SHA-256 in the manifest before it may be flashed (docs/ontwerp.md, section 8).
 
 export interface FirmwareEntry {
   repo: string;

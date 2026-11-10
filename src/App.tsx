@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: EUPL-1.2
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { COCKPIT_TAB, KLUIS_TAB, getToken, kluisUrl, openTab, setToken } from "./api";

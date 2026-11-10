@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: EUPL-1.2
 import { useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, api, explain } from "../api";

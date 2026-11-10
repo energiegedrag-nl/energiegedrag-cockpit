@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: EUPL-1.2
 import React from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";

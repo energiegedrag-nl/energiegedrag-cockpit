@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: EUPL-1.2
 import type {
   CampaignMail,
   CampaignStatus,
@@ -50,7 +51,7 @@ export async function kluisUrl(): Promise<string | null> {
 }
 const TOKEN_KEY = "cockpit.adminToken";
 
-// The admin token lives in sessionStorage only: it is gone when the tab closes (design docs/22, phase 1).
+// The admin token lives in sessionStorage only: it is gone when the tab closes (design docs/ontwerp.md, phase 1).
 export function getToken(): string | null {
   try {
     return sessionStorage.getItem(TOKEN_KEY);

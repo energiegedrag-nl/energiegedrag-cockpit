@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: EUPL-1.2
 // Response types of the /admin routes of needforheat-server-api (package needforheat/cockpit). Times are Unix seconds.
 
 export type CampaignState = "planned" | "running" | "ended";

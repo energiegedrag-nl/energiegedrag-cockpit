@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: EUPL-1.2
 # Build the static Cockpit and serve it with nginx, which also proxies /api/ to needforheat-server-api.
 FROM node:22-alpine AS build
 WORKDIR /app
