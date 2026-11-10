@@ -23,7 +23,7 @@ A NeedForHeat campaign used to be set up and followed with `curl` calls and data
 
 The Cockpit stores no names or e-mail addresses: participants are account numbers. Keep the link between a person and a number in your own administration.
 
-The interface is in Dutch. Later phases (OIDC login, server-side mail) are listed in the [`cockpit` TODO](https://github.com/energiegedrag-nl/needforheat-server-api/blob/main/TODO.md#cockpit).
+The design is described in [docs/ontwerp.md](docs/ontwerp.md) and [docs/kluis.md](docs/kluis.md) (Dutch). The interface is in Dutch. Later phases (OIDC login, server-side mail) are listed in the [`cockpit` TODO](https://github.com/energiegedrag-nl/needforheat-server-api/blob/main/TODO.md#cockpit).
 
 ## Deploying
 
@@ -44,7 +44,7 @@ The interface is in Dutch. Later phases (OIDC login, server-side mail) are liste
    docker run -d --name firmware-mirror -v firmware:/firmware energiegedrag-firmware-mirror
    ```
    It mirrors the releases of the NeedForHeat firmware repositories every 6 hours (`FIRMWARE_REPOS`, `MIRROR_INTERVAL`), checks each zip against the SHA-256 GitHub reports, derives the flash offsets from the bootloader header, the `sdkconfig` at the release tag and the partition table, and refuses builds with secure boot or flash encryption.
-4. Publish it **only on the LAN or via WireGuard** (Traefik `lan-only` middleware), for example as `cockpit.energiegedrag.nl`. The public API route must not pass `/admin`.
+4. Publish it **only on the LAN or via a VPN** (a reverse-proxy rule that admits local addresses only), for example as `cockpit.energiegedrag.nl`. The public API route must not pass `/admin`.
 5. Open the Cockpit and paste the admin token. It is kept in `sessionStorage` and is gone when the tab closes.
 
 nginx serves the Cockpit and proxies `/api/` to the API, so browser and API share one origin (no CORS) and the token is only sent to that host.
@@ -91,5 +91,7 @@ This software is available under the [European Union Public Licence v1.2 (EUPL-1
 ## Credits
 Author:
 * Henri ter Hofte · [@henriterhofte](https://github.com/henriterhofte)
+
+The Cockpit builds on ideas developed while working on [NeedForHeat](https://github.com/energietransitie) at Windesheim University of Applied Sciences.
 
 Built on [React](https://react.dev), [Vite](https://vitejs.dev), [TanStack Query](https://tanstack.com/query), [node-qrcode](https://github.com/soldair/node-qrcode) and [esptool-js](https://github.com/espressif/esptool-js); the firmware manifest follows [ESP Web Tools](https://github.com/esphome/esp-web-tools).

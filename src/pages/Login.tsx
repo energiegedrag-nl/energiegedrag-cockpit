@@ -38,7 +38,7 @@ export function Login({ onLogin }: { onLogin: (token: string) => void }) {
           spellCheck={false}
           value={token}
           onChange={(e) => setToken(e.target.value)}
-          placeholder="Plak het token uit Vaultwarden"
+          placeholder="Plak het beheertoken"
         />
         <p className="hint">
           Het token blijft alleen in dit tabblad bewaard en verdwijnt als je het sluit. Een token maak je op de server met{" "}
