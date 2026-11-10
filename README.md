@@ -95,7 +95,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 Project is: _in progress_. First version, not yet deployed.
 
 ## License
-This software is available under the [Apache 2.0 license](LICENSE).
+This software is available under the [European Union Public Licence v1.2 (EUPL-1.2)](LICENSE), © 2026 Henri ter Hofte.
 
 ## Credits
 This software is a collaborative effort of:
