@@ -52,3 +52,69 @@ jobs:
         with:
           context: mirror
           push: false
+
+  kluis:
+    name: Lokale kluis (tests, age-interop, reproduceerbare build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: age (reference implementation, for the interop test)
+        run: sudo apt-get update && sudo apt-get install -y age && age --version
+      - run: pip install pytest==8.3.3 cryptography==44.0.0
+      - run: python -m pytest -v kluis/tests
+      - name: JavaScript syntax
+        run: node --check kluis/web/app.js && node --check kluis/web/worker.js
+      - uses: actions/cache@v4
+        with:
+          path: kluis/.pyodide-cache
+          key: pyodide-${{ hashFiles('kluis/pyodide-sha256.json', 'kluis/maak.py') }}
+      - name: Build twice and compare (reproducible)
+        run: |
+          python kluis/maak.py --uit /tmp/kluis-a
+          python kluis/maak.py --uit /tmp/kluis-b
+          diff -r /tmp/kluis-a /tmp/kluis-b
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kluis-dist
+          path: /tmp/kluis-a
+          retention-days: 14
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: kluis/Dockerfile
+          push: false
+
+  kluis-attest:
+    name: Lokale kluis (build provenance)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: kluis
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: actions/cache@v4
+        with:
+          path: kluis/.pyodide-cache
+          key: pyodide-${{ hashFiles('kluis/pyodide-sha256.json', 'kluis/maak.py') }}
+      - run: python kluis/maak.py --uit kluis-dist
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            kluis-dist/manifest.json
+            kluis-dist/index.html
+            kluis-dist/app.js
+            kluis-dist/worker.js
+            kluis-dist/kluis.zip

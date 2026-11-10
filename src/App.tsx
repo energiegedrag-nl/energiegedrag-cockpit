@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { getToken, setToken } from "./api";
+import { KLUIS_URL, getToken, setToken } from "./api";
 import { Login } from "./pages/Login";
 import { OverviewPage } from "./pages/OverviewPage";
 import { CampaignPage } from "./pages/CampaignPage";
@@ -79,6 +79,9 @@ export function App() {
           </a>
           <a href="#/voorraad" aria-current={route.page === "inventory" || route.page === "device" ? "page" : undefined}>
             Voorraad
+          </a>
+          <a href={KLUIS_URL} className="kluis-link" title="Persoonsgegevens van proefpersonen: versleuteld, alleen op je eigen apparaat">
+            Lokale kluis
           </a>
           <button type="button" className="link" onClick={logout}>
             Uitloggen

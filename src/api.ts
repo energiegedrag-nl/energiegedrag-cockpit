@@ -1,4 +1,5 @@
 import type {
+  CampaignMail,
   CampaignStatus,
   CampaignUpdate,
   Campaign,
@@ -12,6 +13,9 @@ import type {
 
 // The Cockpit talks to needforheat-server-api through `/api` on its own origin (nginx or the Vite dev server proxies it).
 const BASE = "/api";
+
+// The local vault with participant data runs on its own origin (docs/23), so this page cannot reach its storage.
+export const KLUIS_URL: string = import.meta.env.VITE_KLUIS_URL ?? "https://kluis.energiegedrag.nl/";
 const TOKEN_KEY = "cockpit.adminToken";
 
 // The admin token lives in sessionStorage only: it is gone when the tab closes (design docs/22, phase 1).
@@ -76,6 +80,8 @@ export const api = {
   createCampaign: (campaign: NewCampaign) => request<{ id: number }>("POST", "/campaign", campaign),
   invite: (campaignId: number, count: number) => request<Invitation[]>("POST", `/admin/campaigns/${campaignId}/accounts`, { count }),
   newInvitation: (accountId: number) => request<Invitation>("POST", `/admin/accounts/${accountId}/invitation`),
+  campaignMail: (id: number) => request<CampaignMail>("GET", `/admin/campaigns/${id}/mail`),
+  setCampaignMail: (id: number, m: CampaignMail) => request<CampaignMail>("PUT", `/admin/campaigns/${id}/mail`, m),
   inventory: () => request<InventoryDevice[]>("GET", "/admin/inventory"),
   inventoryDevice: (id: number) => request<InventoryDevice>("GET", `/admin/inventory/${id}`),
   inventoryByMac: (mac: string) => request<InventoryDevice>("GET", `/admin/inventory/mac/${mac.replace(/:/g, "")}`),
