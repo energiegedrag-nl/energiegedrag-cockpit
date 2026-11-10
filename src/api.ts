@@ -129,6 +129,6 @@ export function explain(error: unknown): string {
     if (error.status === 502 || error.status === 503 || error.status === 504) return "De server-API is niet bereikbaar. Probeer het later opnieuw.";
     return `De server meldt: ${error.message} (HTTP ${error.status}).`;
   }
-  if (error instanceof TypeError) return "Geen verbinding met de server. Controleer je netwerk of WireGuard.";
+  if (error instanceof TypeError) return "Geen verbinding met de server. Controleer je netwerk of je VPN-verbinding.";
   return error instanceof Error ? error.message : String(error);
 }
