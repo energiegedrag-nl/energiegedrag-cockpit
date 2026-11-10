@@ -15,7 +15,20 @@ import type {
 const BASE = "/api";
 
 // The local vault with participant data runs on its own origin (docs/26), so this page cannot reach its storage.
-export const KLUIS_URL: string = import.meta.env.VITE_KLUIS_URL ?? "https://kluis.energiegedrag.nl/";
+// Where it lives comes from /config.json (filled in by nginx from KLUIS_URL, or by the mock server); without it the
+// address is derived: cockpit.example.nl -> kluis.example.nl. null: no link.
+export async function kluisUrl(): Promise<string | null> {
+  try {
+    const r = await fetch("/config.json", { cache: "no-cache" });
+    if (r.ok) {
+      const c = (await r.json()) as { kluis_url?: string };
+      if (c.kluis_url) return c.kluis_url;
+    }
+  } catch {
+    // no config: derive below
+  }
+  return location.hostname.startsWith("cockpit.") ? `${location.protocol}//kluis.${location.hostname.slice(8)}/` : null;
+}
 const TOKEN_KEY = "cockpit.adminToken";
 
 // The admin token lives in sessionStorage only: it is gone when the tab closes (design docs/22, phase 1).

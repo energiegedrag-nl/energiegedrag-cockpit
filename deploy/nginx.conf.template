@@ -8,6 +8,13 @@ server {
     add_header Referrer-Policy no-referrer always;
     add_header Content-Security-Policy "default-src 'self'; img-src 'self' data:; style-src 'self'; connect-src 'self'; frame-ancestors 'none'" always;
 
+    # Where the local vault lives (docs/26), for the link in the menu.
+    location = /config.json {
+        default_type application/json;
+        add_header Cache-Control no-cache;
+        return 200 '{"kluis_url": "${KLUIS_URL}"}';
+    }
+
     # Same origin as the API: the browser sends the admin token only to this host.
     location /api/ {
         proxy_pass ${API_UPSTREAM}/;

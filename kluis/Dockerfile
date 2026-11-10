@@ -11,4 +11,4 @@ RUN git config --global --add safe.directory /src && python kluis/maak.py --uit 
 FROM nginx:1.27-alpine
 COPY kluis/nginx.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build /dist /usr/share/nginx/html
-ENV API_UPSTREAM=http://api:8080
+ENV API_UPSTREAM=http://api:8080 COCKPIT_URL=https://cockpit.energiegedrag.nl/

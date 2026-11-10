@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { KLUIS_URL, api, explain } from "../api";
+import { api, explain, kluisUrl } from "../api";
 import {
   accountStateLabel,
   ago,
@@ -279,6 +279,7 @@ function MailPanel({ campaign }: { campaign: Campaign }) {
   const queryClient = useQueryClient();
   const setting = useQuery({ queryKey: ["campaign-mail", campaign.id], queryFn: () => api.campaignMail(campaign.id) });
   const [alias, setAlias] = useState<string | null>(null);
+  const kluis = useQuery({ queryKey: ["kluis-url"], queryFn: kluisUrl, staleTime: Infinity, refetchInterval: false }).data;
   const save = useMutation({
     mutationFn: (m: CampaignMail) => api.setCampaignMail(campaign.id, m),
     onSuccess: (m) => {
@@ -305,7 +306,7 @@ function MailPanel({ campaign }: { campaign: Campaign }) {
       </label>
       <p className="hint">
         Standaard uit. Uit betekent: de campagnebeheerder mailt uitnodigingen met het eigen mailprogramma, vanuit de{" "}
-        <a href={KLUIS_URL}>lokale kluis</a>. Er worden nergens mailwachtwoorden opgeslagen.
+        {kluis ? <a href={kluis}>lokale kluis</a> : "lokale kluis"}. Er worden nergens mailwachtwoorden opgeslagen.
       </p>
       <label htmlFor="alias">Helpdeskadres van deze campagne</label>
       <input id="alias" type="email" placeholder="helpdesk-winter@energiegedrag.nl" value={aliasValue} onChange={(e) => setAlias(e.target.value)} />

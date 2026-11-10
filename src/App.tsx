@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { KLUIS_URL, getToken, setToken } from "./api";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getToken, kluisUrl, setToken } from "./api";
 import { Login } from "./pages/Login";
 import { OverviewPage } from "./pages/OverviewPage";
 import { CampaignPage } from "./pages/CampaignPage";
@@ -31,6 +31,7 @@ export function App() {
   const [token, setTokenState] = useState(getToken());
   const [route, setRoute] = useState(parseRoute(location.hash));
   const queryClient = useQueryClient();
+  const kluis = useQuery({ queryKey: ["kluis-url"], queryFn: kluisUrl, staleTime: Infinity, refetchInterval: false }).data;
 
   useEffect(() => {
     const onHash = () => setRoute(parseRoute(location.hash));
@@ -80,9 +81,11 @@ export function App() {
           <a href="#/voorraad" aria-current={route.page === "inventory" || route.page === "device" ? "page" : undefined}>
             Voorraad
           </a>
-          <a href={KLUIS_URL} className="kluis-link" title="Persoonsgegevens van proefpersonen: versleuteld, alleen op je eigen apparaat">
-            Lokale kluis
-          </a>
+          {kluis && (
+            <a href={kluis} className="kluis-link" title="Persoonsgegevens van proefpersonen: versleuteld, alleen op je eigen apparaat">
+              Lokale kluis
+            </a>
+          )}
           <button type="button" className="link" onClick={logout}>
             Uitloggen
           </button>

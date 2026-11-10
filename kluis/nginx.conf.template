@@ -23,6 +23,13 @@ server {
         return 404;
     }
 
+    # Where the Cockpit lives, for the link back. Not part of the verified build (it is only a link).
+    location = /config.json {
+        default_type application/json;
+        add_header Cache-Control no-cache;
+        return 200 '{"cockpit_url": "${COCKPIT_URL}"}';
+    }
+
     location ~ \.(wasm)$ {
         types { application/wasm wasm; }
         expires -1;

@@ -203,7 +203,25 @@ async function guarded(button, fn) {
 
 // ---- start -----------------------------------------------------------------------------------------------------------
 
+/** The Cockpit lives on another origin: config.json (from nginx, COCKPIT_URL) or derived kluis.x -> cockpit.x. */
+async function cockpitLink() {
+  let url = null;
+  try {
+    const r = await fetch("config.json", { cache: "no-cache" });
+    if (r.ok) url = (await r.json()).cockpit_url || null;
+  } catch {}
+  if (!url && location.hostname.startsWith("kluis.")) url = `${location.protocol}//cockpit.${location.hostname.slice(6)}/`;
+  const a = $("cockpit-link");
+  if (url) {
+    a.href = url;
+    a.classList.remove("hidden");
+  } else {
+    a.parentElement.classList.add("hidden");
+  }
+}
+
 async function boot() {
+  cockpitLink();
   $("csp").textContent = document.querySelector('meta[http-equiv="Content-Security-Policy"]').content.split("; ").join(";\n");
   try {
     const m = await (await fetch("manifest.json", { cache: "no-cache" })).json();
