@@ -1,8 +1,16 @@
 # SPDX-License-Identifier: EUPL-1.2
 """Unit tests for the firmware mirror: python -m unittest discover mirror"""
 
+import hashlib
+import io
+import os
+import stat
 import struct
+import tempfile
 import unittest
+import zipfile
+from pathlib import Path
+from unittest import mock
 
 import mirror
 
@@ -54,6 +62,23 @@ class MirrorTest(unittest.TestCase):
             mirror.variant_of("a_../../etc_v1.zip", "x", "v1")
         self.assertEqual(mirror.device_type_of('constexpr const char *DEVICE_TYPE_NAME = "twomes-p1-reader-firmware";'),
                          "twomes-p1-reader-firmware")
+
+    @unittest.skipIf(os.name == "nt", "POSIX file modes")
+    def test_mirrored_variant_is_readable_by_others(self):
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w") as z:
+            z.writestr("bootloader.bin", bootloader())
+            z.writestr("partitions.bin", TABLE)
+            z.writestr("firmware.bin", b"\xe9" + b"\0" * 1000)
+        data = buf.getvalue()
+        asset = {"name": "lrm_M5STACK_COREINK_PRODUCTION_SERVER_v1.zip", "browser_download_url": "https://example.org/a.zip",
+                 "digest": "sha256:" + hashlib.sha256(data).hexdigest()}
+        release = {"tag_name": "v1", "prerelease": False, "published_at": "2026-11-18T00:00:00Z"}
+        with tempfile.TemporaryDirectory() as d, mock.patch.object(mirror, "get", return_value=data):
+            mirror.mirror_asset(Path(d), "org/lrm", release, asset, {}, "device")
+            target = Path(d) / "lrm" / "v1" / "M5STACK_COREINK_PRODUCTION_SERVER"
+            self.assertTrue(stat.S_IMODE(target.stat().st_mode) & stat.S_IXOTH, oct(target.stat().st_mode))
+            self.assertTrue(stat.S_IMODE((target / "manifest.json").stat().st_mode) & stat.S_IROTH)
 
 
 if __name__ == "__main__":

@@ -203,6 +203,9 @@ def mirror_asset(out: Path, repo: str, release: dict, asset: dict, sdkconfig: di
         },
     }
     tmp = Path(tempfile.mkdtemp(dir=out, prefix=".tmp-"))
+    # mkdtemp creates the folder with mode 0700. The Cockpit's nginx runs as another user and must be able to read it
+    # (otherwise every manifest is a 404 in the flash station, 18-11).
+    tmp.chmod(0o755)
     try:
         for part in parts:
             (tmp / part["path"]).write_bytes(images[part["path"]])
