@@ -9,6 +9,7 @@ from __future__ import annotations
 import csv
 import io
 import zipfile
+from email import policy
 from email.message import EmailMessage
 from email.utils import formataddr
 from string import Template
@@ -55,15 +56,21 @@ def mailto(to: str, subject: str, body: str) -> str:
     return f"mailto:{quote(to, safe='@')}?subject={q(subject)}&body={q(body.replace(chr(10), chr(13) + chr(10)))}"
 
 
+# 8bit with CRLF and lines up to 998 (RFC 5322): the activation link stays on one line. With the default policy,
+# set_content() chose quoted-printable for the long link line and wrote bare LF; Outlook then showed the encoded
+# text ("d= NeedForHeat", "=3D" and "=" inside the token), which broke the link (18-11).
+EML_POLICY = policy.default.clone(linesep="\r\n", max_line_length=998)
+
+
 def eml(to_name: str, to: str, subject: str, body: str, reply_to: str = "") -> bytes:
     """An unsent draft; Outlook and Thunderbird open it ready to send (X-Unsent)."""
-    msg = EmailMessage()
+    msg = EmailMessage(policy=EML_POLICY)
     msg["To"] = formataddr((to_name, to)) if to_name else to
     msg["Subject"] = subject
     if reply_to:
         msg["Reply-To"] = reply_to
     msg["X-Unsent"] = "1"
-    msg.set_content(body)
+    msg.set_content(body, cte="8bit")
     return bytes(msg)
 
 

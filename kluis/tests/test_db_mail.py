@@ -42,3 +42,17 @@ def test_mail_forms():
     z = mail.eml_zip([("a.eml", raw)])
     assert z == mail.eml_zip([("a.eml", raw)])  # reproducible
     assert zipfile.ZipFile(io.BytesIO(z)).read("a.eml") == raw
+
+
+def test_eml_keeps_long_link_intact():
+    import email
+
+    link = "https://energiegedrag.nl/nfh/activate?prod_token=" + "eyJhbGciOiJFUzI1NiJ9." + "a" * 300
+    body = mail.render(mail.DEFAULT_BODY, {"naam": "Zoë", "campagne": "Winter", "link": link, "helpdesk": "h@x", "afzender": "Team"})
+    raw = mail.eml("Zoë", "zoe@example.org", "Uitnodiging: Winter", body)
+    assert b"Content-Transfer-Encoding: 8bit" in raw
+    assert raw.count(b"\n") == raw.count(b"\r\n")  # CRLF only
+    assert link.encode() + b"\r\n" in raw  # the link on one line, no soft breaks or =3D
+    assert b"=\r\n" not in raw
+    parsed = email.message_from_bytes(raw, policy=email.policy.default)
+    assert link in parsed.get_content() and "Beste Zoë" in parsed.get_content()
