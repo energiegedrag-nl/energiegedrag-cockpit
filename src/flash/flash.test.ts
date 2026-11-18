@@ -69,3 +69,14 @@ describe("provisioning payload", () => {
     expect(nameMatchesMac("1A2B-DDEEF0", "AA:BB:CC:DD:EE:FF")).toBe(false);
   });
 });
+
+describe("flash progress", () => {
+  it("estimates the time left from the writing rate, not counting the erase before it", async () => {
+    const { secondsLeft } = await import("./FlashProgress");
+    // Writing started at t=10 s with 0%; at t=70 s it is at 25%: 60 s per 25%, so 180 s left.
+    expect(secondsLeft(0.25, { t: 10_000, f: 0 }, 70_000)).toBeCloseTo(180, 5);
+    expect(secondsLeft(0.25, null, 70_000)).toBeNull();
+    expect(secondsLeft(1, { t: 0, f: 0 }, 1000)).toBeNull();
+    expect(secondsLeft(0, { t: 0, f: 0 }, 1000)).toBeNull();
+  });
+});
