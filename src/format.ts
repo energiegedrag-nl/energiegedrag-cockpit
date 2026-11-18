@@ -100,3 +100,10 @@ export function fromDateInput(value: string): number | undefined {
   const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
   return Number.isNaN(d.getTime()) ? undefined : Math.floor(d.getTime() / 1000);
 }
+
+/** Languages a campaign can have (the server accepts any BCP 47 tag like "nl-NL"; these are the ones with texts). */
+export const LANGUAGES: { code: string; label: string }[] = [
+  { code: "nl-NL", label: "Nederlands" },
+  { code: "en-US", label: "English" },
+];
+export const DEFAULT_LANGUAGE = "nl-NL";

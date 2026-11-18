@@ -2,7 +2,7 @@
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, explain } from "../api";
-import { fromDateInput } from "../format";
+import { DEFAULT_LANGUAGE, fromDateInput, LANGUAGES } from "../format";
 
 export function NewCampaignPage() {
   const queryClient = useQueryClient();
@@ -11,6 +11,7 @@ export function NewCampaignPage() {
   const [app, setApp] = useState("");
   const [list, setList] = useState("");
   const [infoURL, setInfoURL] = useState("https://manuals.energiegedrag.nl/campaigns/generic");
+  const [language, setLanguage] = useState(DEFAULT_LANGUAGE);
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
 
@@ -20,6 +21,7 @@ export function NewCampaignPage() {
         name: name.trim(),
         app: { name: app },
         info_url: infoURL.trim(),
+        language,
         start_time: fromDateInput(start),
         end_time: fromDateInput(end),
         data_source_list: { name: list },
@@ -92,6 +94,16 @@ export function NewCampaignPage() {
             </select>
           </div>
         </div>
+
+        <label htmlFor="language">Taal van de campagne</label>
+        <select id="language" value={language} onChange={(e) => setLanguage(e.target.value)}>
+          {LANGUAGES.map((l) => (
+            <option key={l.code} value={l.code}>
+              {l.label} ({l.code})
+            </option>
+          ))}
+        </select>
+        <p className="small muted">Voor teksten op de meetapparaten, de handleidingen en de uitnodigingen.</p>
 
         <label htmlFor="info">Infopagina voor deelnemers</label>
         <input id="info" type="url" value={infoURL} onChange={(e) => setInfoURL(e.target.value)} required />
