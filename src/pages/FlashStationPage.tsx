@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: EUPL-1.2
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, api, explain } from "../api";
 import { connect, disconnect, eraseAll, flash, resetAndWatch, serialSupported, type Connection } from "../flash/esp";
@@ -306,11 +306,27 @@ export function FlashStationPage() {
         {(log.length > 0 || consoleText) && (
           <details className="log">
             <summary>Logboek</summary>
-            <pre>{log.join("\n")}</pre>
-            {consoleText && <pre>{consoleText.slice(-6000)}</pre>}
+            <h3 className="small">Flashen (esptool)</h3>
+            <LogBlock text={log.join("\n")} />
+            {consoleText && (
+              <>
+                <h3 className="small">Uitvoer van het apparaat na herstart</h3>
+                <p className="small muted">Hieruit leest het flashstation de provisioning-gegevens voor de voorraad.</p>
+                <LogBlock text={consoleText.slice(-6000)} />
+              </>
+            )}
           </details>
         )}
       </section>
     </>
   );
+}
+
+/** A log that keeps showing its last line while it grows. */
+function LogBlock({ text }: { text: string }) {
+  const ref = useRef<HTMLPreElement>(null);
+  useEffect(() => {
+    if (ref.current) ref.current.scrollTop = ref.current.scrollHeight;
+  }, [text]);
+  return <pre ref={ref}>{text}</pre>;
 }
