@@ -10,7 +10,7 @@ export function NewCampaignPage() {
   const [name, setName] = useState("");
   const [app, setApp] = useState("");
   const [list, setList] = useState("");
-  const [infoURL, setInfoURL] = useState("https://manuals.energiegedrag.nl/");
+  const [infoURL, setInfoURL] = useState("https://manuals.energiegedrag.nl/campaigns/generic");
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
 
@@ -95,6 +95,10 @@ export function NewCampaignPage() {
 
         <label htmlFor="info">Infopagina voor deelnemers</label>
         <input id="info" type="url" value={infoURL} onChange={(e) => setInfoURL(e.target.value)} required />
+        <p className="small muted">
+          De app opent <code>&lt;deze URL&gt;/info/</code>, <code>/faq/</code> en <code>/privacy/</code> met de taal erachter (bijvoorbeeld{" "}
+          <code>/privacy/nl-NL/</code>). Op manuals.energiegedrag.nl is dat een map <code>campaigns/&lt;naam&gt;</code> in needforheat-manuals.
+        </p>
         {usedInfo && <p className="error">Elke campagne heeft een eigen infopagina; deze is al in gebruik.</p>}
 
         <div className="row">
