@@ -23,6 +23,7 @@ export interface Campaign {
   name: string;
   app: string;
   info_url: string;
+  language?: string; // default language of the campaign (BCP 47), e.g. nl-NL; older servers leave it out
   start_time: number | null;
   end_time: number | null;
   state: CampaignState;
@@ -72,6 +73,7 @@ export interface CampaignStatus {
 
 export interface CampaignUpdate {
   info_url?: string;
+  language?: string;
   start_time?: number;
   end_time?: number;
 }
@@ -86,6 +88,7 @@ export interface NewCampaign {
   name: string;
   app: { name: string };
   info_url: string;
+  language?: string;
   start_time?: number;
   end_time?: number;
   data_source_list: { name: string };

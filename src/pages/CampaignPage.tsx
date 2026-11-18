@@ -7,10 +7,12 @@ import {
   ago,
   campaignStateLabel,
   categoryLabel,
+  DEFAULT_LANGUAGE,
   durationLabel,
   formatDate,
   formatDateTime,
   fromDateInput,
+  LANGUAGES,
   sourceStateLabel,
   toDateInput,
 } from "../format";
@@ -220,6 +222,7 @@ function InvitePanel({ campaign }: { campaign: Campaign }) {
 function SettingsPanel({ campaign }: { campaign: Campaign }) {
   const queryClient = useQueryClient();
   const [infoURL, setInfoURL] = useState(campaign.info_url);
+  const [language, setLanguage] = useState(campaign.language ?? DEFAULT_LANGUAGE);
   const [start, setStart] = useState(toDateInput(campaign.start_time));
   const [end, setEnd] = useState(toDateInput(campaign.end_time));
   const [saved, setSaved] = useState(false);
@@ -227,6 +230,7 @@ function SettingsPanel({ campaign }: { campaign: Campaign }) {
     mutationFn: () =>
       api.updateCampaign(campaign.id, {
         info_url: infoURL.trim() !== campaign.info_url ? infoURL.trim() : undefined,
+        language: language !== (campaign.language ?? DEFAULT_LANGUAGE) ? language : undefined,
         start_time: start !== toDateInput(campaign.start_time) ? fromDateInput(start) : undefined,
         end_time: end !== toDateInput(campaign.end_time) ? fromDateInput(end) : undefined,
       }),
@@ -250,6 +254,14 @@ function SettingsPanel({ campaign }: { campaign: Campaign }) {
       }}
     >
       <h2>Instellingen</h2>
+      <label htmlFor="language">Taal van de campagne</label>
+      <select id="language" value={language} onChange={(e) => setLanguage(e.target.value)}>
+        {LANGUAGES.map((l) => (
+          <option key={l.code} value={l.code}>
+            {l.label} ({l.code})
+          </option>
+        ))}
+      </select>
       <label htmlFor="info">Infopagina voor deelnemers</label>
       <input id="info" type="url" value={infoURL} onChange={(e) => setInfoURL(e.target.value)} required />
       <div className="row">
