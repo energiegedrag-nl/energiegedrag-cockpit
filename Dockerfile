@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: EUPL-1.2
 # Build the static Cockpit and serve it with nginx, which also proxies /api/ to needforheat-server-api.
-FROM node:22-alpine AS build
+# The static build is the same for every platform: run it natively, not under emulation (rollup fails
+# under QEMU with "Code is nested too deeply" when building the arm64 image).
+FROM --platform=$BUILDPLATFORM node:22-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
