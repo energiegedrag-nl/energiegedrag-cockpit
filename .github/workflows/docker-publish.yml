@@ -1,0 +1,53 @@
+# SPDX-License-Identifier: EUPL-1.2
+# Publish the Cockpit and the firmware mirror as images on GHCR, so a server can deploy them without building
+# (stack cockpit/<env> in needforheat-server-configuration). Tags: the branch (main) and, for a v*.*.* tag, the
+# version, major.minor, major and latest.
+name: Docker publish
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  docker:
+    name: Build and push ${{ matrix.image }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - image: energiegedrag-cockpit
+            context: .
+          - image: energiegedrag-cockpit-mirror
+            context: mirror
+    steps:
+      - uses: actions/checkout@v7
+      # Needed to build the arm64 image on an amd64 runner.
+      - uses: docker/setup-qemu-action@v4
+      - uses: docker/setup-buildx-action@v4
+      - name: Generate image tags
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v7
+        with:
+          context: ${{ matrix.context }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
