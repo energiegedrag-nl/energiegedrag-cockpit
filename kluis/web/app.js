@@ -22,6 +22,22 @@ function h(tag, attrs = {}, ...children) {
   return el;
 }
 const $ = (id) => document.getElementById(id);
+
+/** A secret input with a show/hide button and its length, so you can check that the whole token was pasted. */
+function secretField(input) {
+  const eye = h("button", { type: "button", class: "eye", "aria-label": "Token tonen", title: "Tonen of verbergen" }, "tonen");
+  const count = h("span", { class: "small muted" });
+  const update = () => (count.textContent = input.value ? `${input.value.length} tekens` : "");
+  input.addEventListener("input", update);
+  eye.onclick = () => {
+    const show = input.type === "password";
+    input.type = show ? "text" : "password";
+    eye.textContent = show ? "verbergen" : "tonen";
+    eye.setAttribute("aria-label", show ? "Token verbergen" : "Token tonen");
+  };
+  return h("div", { class: "secret" }, h("div", { class: "secret-row" }, input, eye), count);
+}
+const TOKEN_HELP = "Het admin-token van de NeedForHeat-server: hetzelfde als waarmee je inlogt in de Cockpit (aangemaakt met `admin create`).";
 const b64ToBytes = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
 function bytesToB64(bytes) {
   let s = "";
@@ -349,7 +365,9 @@ function recoveryForm() {
   return h("div", {},
     h("label", { for: "herstel" }, "Herstelsleutel"), key, h("div", { class: "row" }, h("span", { class: "small muted" }, "of uit bestand:"), file),
     h("label", { for: "kid" }, "Kluis van de server"), id,
-    !token() && tokenInput,
+    !token() && h("label", {}, "Beheertoken"),
+    !token() && secretField(tokenInput),
+    !token() && h("p", { class: "small muted" }, TOKEN_HELP),
     h("label", {}, "…of een kluisbestand (.age)"), vaultFile,
     h("div", { class: "row" }, go),
   );
@@ -782,7 +800,9 @@ function serverTab() {
     h("section", { class: "panel" },
       h("h2", {}, "Server"),
       h("p", { class: "small muted" }, "Voor campagnes, uitnodigingen en de back-up. Het token blijft alleen in dit tabblad (sessionStorage van deze kluispagina; de Cockpit-pagina kan er niet bij)."),
-      h("label", { for: "tok" }, "Beheertoken"), tokenInput, h("div", { class: "row" }, connect),
+      h("label", { for: "tok" }, "Beheertoken"), secretField(tokenInput),
+      h("p", { class: "small muted" }, TOKEN_HELP),
+      h("div", { class: "row" }, connect),
       state.serverError && h("p", { class: "error" }, state.serverError),
     ),
     h("section", { class: "panel" },
