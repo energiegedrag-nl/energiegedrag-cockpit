@@ -8,6 +8,7 @@ import { findProvisioning, nameMatchesMac, type Provisioning } from "../flash/pr
 import { firmwareLabel, formatDateTime, inventoryStateLabel } from "../format";
 import type { InventoryDevice } from "../types";
 import { DeviceLabel, printLabel } from "./DeviceLabel";
+import { FlashProgress } from "../flash/FlashProgress";
 
 type Step =
   | { kind: "idle" }
@@ -272,14 +273,7 @@ export function FlashStationPage() {
       <section className="panel">
         <h2>3. Flashen</h2>
         {step.kind === "busy" && (
-          <div className="progress-block" aria-live="polite">
-            <div>{step.what}…</div>
-            {step.progress !== undefined && (
-              <progress max={1} value={step.progress}>
-                {Math.round(step.progress * 100)}%
-              </progress>
-            )}
-          </div>
+          <FlashProgress key={step.what} what={step.what} fraction={step.progress} />
         )}
         {step.kind === "connected" && (
           <div className="row">
