@@ -108,3 +108,7 @@ td.sel input { width: auto; }
 }
 .spacer { flex: 1; }
 .gap-top { margin-top: 18px; }
+.secret { display: grid; gap: 4px; }
+.secret-row { display: flex; gap: 8px; align-items: stretch; }
+.secret-row input { flex: 1 1 auto; min-width: 0; font-family: ui-monospace, Menlo, Consolas, monospace; }
+.secret-row .eye { flex: 0 0 auto; }
