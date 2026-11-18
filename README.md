@@ -33,6 +33,8 @@ The design is described in [docs/ontwerp.md](docs/ontwerp.md) and [docs/kluis.md
 - Docker, on the same Docker network as the API.
 
 ### Steps
+On a NeedForHeat server, deploy the stack `cockpit/<env>` from [needforheat-server-configuration](https://github.com/energiegedrag-nl/needforheat-server-configuration/tree/main/cockpit): it runs the images that this repository publishes on GHCR (`ghcr.io/energiegedrag-nl/energiegedrag-cockpit` and `ghcr.io/energiegedrag-nl/energiegedrag-cockpit-mirror`, tag `main` or a version). The steps below do the same by hand.
+
 1. Build the image: `docker build -t energiegedrag-cockpit .`
 2. Run it next to the API; `API_UPSTREAM` is where nginx finds the API (default `http://api:8080`):
    ```shell
