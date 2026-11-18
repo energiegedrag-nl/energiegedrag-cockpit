@@ -35,6 +35,11 @@ server {
         types { application/wasm wasm; }
         expires -1;
     }
+    # The Cockpit links to the bare origin (KLUIS_URL); without this, / gave 404.
+    location = / {
+        try_files /index.html =404;
+        expires -1;
+    }
     location / {
         try_files $uri =404;
         expires -1;
