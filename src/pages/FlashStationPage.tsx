@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, api, explain } from "../api";
-import { connect, disconnect, eraseAll, flash, resetAndWatch, serialSupported, type Connection } from "../flash/esp";
+import { connect, disconnect, eraseAll, FLASH_BAUD, flash, resetAndWatch, SAFE_FLASH_BAUD, serialSupported, type Connection } from "../flash/esp";
 import { loadImages, loadIndex, sortFirmware, type FirmwareEntry } from "../flash/firmware";
 import { findProvisioning, nameMatchesMac, type Provisioning } from "../flash/provisioning";
 import { firmwareLabel, formatDateTime, inventoryStateLabel } from "../format";
@@ -25,6 +25,14 @@ export function FlashStationPage() {
   const [showPre, setShowPre] = useState(false);
   const [selected, setSelected] = useState<string>("");
   const [eraseFirst, setEraseFirst] = useState(true);
+  // Write errors ("Failed to write compressed data to flash") at 460800 baud on some USB-serial chips: flash slower.
+  const [slow, setSlow] = useState(() => {
+    try {
+      return localStorage.getItem("flash.slow") === "1";
+    } catch {
+      return false;
+    }
+  });
   const [force, setForce] = useState(false);
   const [step, setStep] = useState<Step>({ kind: "idle" });
   const [error, setError] = useState<string | null>(null);
@@ -51,7 +59,9 @@ export function FlashStationPage() {
   }
 
   const fail = async (e: unknown) => {
-    setError(e instanceof ApiError ? explain(e) : e instanceof Error ? e.message : String(e));
+    const message = e instanceof ApiError ? explain(e) : e instanceof Error ? e.message : String(e);
+    const writeError = /write|flash|status/i.test(message) && !slow;
+    setError(writeError ? `${message} Probeer "Langzaam flashen" hieronder (115200 baud), een kortere kabel of een poort direct op de computer.` : message);
     if (connection.current) await disconnect(connection.current);
     connection.current = null;
     setStep({ kind: "idle" });
@@ -65,7 +75,7 @@ export function FlashStationPage() {
     setForce(false);
     setStep({ kind: "connecting" });
     try {
-      const c = await connect(addLog);
+      const c = await connect(addLog, slow ? SAFE_FLASH_BAUD : FLASH_BAUD);
       connection.current = c;
       try {
         setKnown(await api.inventoryByMac(c.mac));
@@ -183,6 +193,21 @@ export function FlashStationPage() {
                 </label>
                 <label className="check">
                   <input type="checkbox" checked={eraseFirst} onChange={(e) => setEraseFirst(e.target.checked)} /> Eerst volledig wissen
+                </label>
+                <label className="check">
+                  <input
+                    type="checkbox"
+                    checked={slow}
+                    onChange={(e) => {
+                      setSlow(e.target.checked);
+                      try {
+                        localStorage.setItem("flash.slow", e.target.checked ? "1" : "0");
+                      } catch {
+                        /* not remembered */
+                      }
+                    }}
+                  />{" "}
+                  Langzaam flashen (115200 baud, bij schrijffouten)
                 </label>
               </div>
               <p className="hint">

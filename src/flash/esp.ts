@@ -6,6 +6,8 @@ import type { FlashImage } from "./firmware";
 import { md5 } from "./md5";
 
 export const FLASH_BAUD = 460800;
+/** Slower, for USB-serial chips or cables that give write errors at FLASH_BAUD (e.g. the CH9102 of the CoreInk). */
+export const SAFE_FLASH_BAUD = 115200;
 export const CONSOLE_BAUD = 115200;
 
 export function serialSupported(): boolean {
@@ -38,10 +40,10 @@ function terminal(log: (line: string) => void): IEspLoaderTerminal {
 }
 
 /** Asks the user to pick a serial port, then connects to the ROM bootloader (resets the device into download mode). */
-export async function connect(log: (line: string) => void): Promise<Connection> {
+export async function connect(log: (line: string) => void, baudrate: number = FLASH_BAUD): Promise<Connection> {
   const port = await navigator.serial.requestPort();
   const transport = new Transport(port, false);
-  const loader = new ESPLoader({ transport, baudrate: FLASH_BAUD, terminal: terminal(log) });
+  const loader = new ESPLoader({ transport, baudrate, terminal: terminal(log) });
   try {
     const description = await loader.main();
     const mac = (await loader.chip.readMac(loader)).toUpperCase();
