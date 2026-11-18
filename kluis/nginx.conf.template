@@ -31,6 +31,15 @@ server {
         return 200 '{"cockpit_url": "${COCKPIT_URL}"}';
     }
 
+    # Pyodide is an ES module (pyodide.mjs, pyodide.asm.mjs). nginx's mime.types does not know .mjs and served
+    # application/octet-stream, which browsers refuse for module scripts: "Fout in de Python-worker: onbekend".
+    # No ETag/If-Modified-Since: a 304 would keep a wrongly typed copy in the browser cache.
+    location ~ \.mjs$ {
+        types { text/javascript mjs; }
+        etag off;
+        if_modified_since off;
+        expires -1;
+    }
     location ~ \.(wasm)$ {
         types { application/wasm wasm; }
         expires -1;
