@@ -34,7 +34,8 @@ export function FlashStationPage() {
       return false;
     }
   });
-  const [force, setForce] = useState(false);
+  // A device that is still linked to a participant: where does it go after flashing?
+  const [decision, setDecision] = useState<"release" | "keep" | null>(null);
   const [step, setStep] = useState<Step>({ kind: "idle" });
   const [error, setError] = useState<string | null>(null);
   const [log, setLog] = useState<string[]>([]);
@@ -45,7 +46,10 @@ export function FlashStationPage() {
   const firmware = useMemo(() => sortFirmware((index.data?.firmware ?? []).filter((f) => showPre || !f.prerelease)), [index.data, showPre]);
   const chip = connection.current?.chipFamily;
   const choice = firmware.find((f) => entryKey(f) === selected) ?? null;
-  const assigned = known !== null && (known.state === "assigned" || known.state === "shipped");
+  // Still linked: assigned, shipped or taken in (returned) in the inventory, or activated by the app.
+  const linked = known !== null && (known.state === "assigned" || known.state === "shipped" || known.state === "returned" || known.in_use !== null);
+  const owner = known?.account_id ?? known?.in_use?.account_id ?? null;
+  const blocked = linked && decision === null;
   const addLog = (line: string) => setLog((l) => [...l.slice(-300), line]);
 
   if (!serialSupported()) {
@@ -73,7 +77,7 @@ export function FlashStationPage() {
     setLog([]);
     setConsoleText("");
     setKnown(null);
-    setForce(false);
+    setDecision(null);
     setStep({ kind: "connecting" });
     try {
       const c = await connect(addLog, slow ? SAFE_FLASH_BAUD : FLASH_BAUD);
@@ -114,7 +118,8 @@ export function FlashStationPage() {
         name,
         firmware: choice.repo,
         firmware_version: `${choice.tag} ${choice.variant}`,
-        force: assigned && force,
+        release: linked && decision === "release",
+        keep_account: linked && decision === "keep",
       });
       connection.current = null; // resetAndWatch closed the port
       setKnown(device);
@@ -137,7 +142,17 @@ export function FlashStationPage() {
       connection.current = null;
       let device: InventoryDevice | null = null;
       if (known && known.state !== "erased") {
-        device = await api.inventoryEvent(known.id, { event: "erase", details: "volledig gewist op het flashstation" });
+        // The device is here: a shipped or assigned device is taken in first.
+        if (linked && (known.state === "shipped" || known.state === "assigned")) {
+          device = await api.inventoryEvent(known.id, { event: "return", details: "ingenomen op het flashstation" });
+        }
+        if (linked && decision === "release") {
+          device = await api.inventoryEvent(known.id, { event: "release", details: `vrijgegeven op het flashstation; was van deelnemer ${owner ?? "?"}` });
+        }
+        // Repair for the same participant: keep the account (erased would drop it).
+        if (!(linked && decision === "keep")) {
+          device = await api.inventoryEvent(known.id, { event: "erase", details: "volledig gewist op het flashstation" });
+        }
         queryClient.invalidateQueries({ queryKey: ["inventory"] });
       }
       setStep({ kind: "erased", device });
@@ -256,16 +271,23 @@ export function FlashStationPage() {
               </dd>
             </dl>
           )}
-          {known?.in_use && (
-            <p className="warning">
-              De app heeft dit apparaat geactiveerd voor deelnemer {known.in_use.account_id}. Opnieuw flashen verbreekt de meting.
-            </p>
-          )}
-          {connection.current && assigned && (
-            <label className="check warning">
-              <input type="checkbox" checked={force} onChange={(e) => setForce(e.target.checked)} /> Dit apparaat is nog{" "}
-              {inventoryStateLabel[known!.state].toLowerCase()} aan deelnemer {known!.account_id}. Toch flashen en de koppeling verbreken.
-            </label>
+          {connection.current && linked && (
+            <fieldset className="warning decision">
+              <legend>
+                Dit apparaat is nog van deelnemer {owner ?? "?"}
+                {known!.in_use ? " (geactiveerd door de app)" : ` (${inventoryStateLabel[known!.state].toLowerCase()})`}. Waar gaat het heen?
+              </legend>
+              <label className="check">
+                <input type="radio" name="decision" checked={decision === "release"} onChange={() => setDecision("release")} /> Naar een{" "}
+                <strong>andere deelnemer</strong>: vrijgeven. De metingen blijven bij deelnemer {owner ?? "?"}; de oude koppeling werkt niet
+                meer.
+              </label>
+              <label className="check">
+                <input type="radio" name="decision" checked={decision === "keep"} onChange={() => setDecision("keep")} /> Na reparatie{" "}
+                <strong>terug naar deelnemer {owner ?? "?"}</strong>. Die koppelt het daarna opnieuw met de app; in de voorraad staat het als
+                ingenomen, klaar om terug te sturen.
+              </label>
+            </fieldset>
           )}
         </div>
       </section>
@@ -277,11 +299,11 @@ export function FlashStationPage() {
         )}
         {step.kind === "connected" && (
           <div className="row">
-            <button type="button" className="primary" onClick={onFlash} disabled={!choice || choice.chip_family !== chip || (assigned && !force)}>
+            <button type="button" className="primary" onClick={onFlash} disabled={!choice || choice.chip_family !== chip || blocked}>
               {choice ? `Flash ${firmwareLabel(choice.repo)} ${choice.tag}` : "Kies eerst firmware"}
             </button>
             {known && (
-              <button type="button" onClick={onEraseOnly} disabled={assigned && !force}>
+              <button type="button" onClick={onEraseOnly} disabled={blocked}>
                 Alleen wissen (retour)
               </button>
             )}

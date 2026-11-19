@@ -25,7 +25,7 @@ export const inventoryStateLabel: Record<InventoryState, string> = {
   flashed: "Op voorraad",
   assigned: "Toegewezen",
   shipped: "Uitgegeven",
-  returned: "Retour",
+  returned: "Ingenomen",
   erased: "Gewist",
 };
 
@@ -33,7 +33,8 @@ export const inventoryEventLabel: Record<InventoryEventName, string> = {
   flash: "Geflasht",
   assign: "Toegewezen",
   ship: "Uitgegeven",
-  return: "Retour ontvangen",
+  return: "Ingenomen",
+  release: "Vrijgegeven",
   erase: "Gewist",
   note: "Notitie",
 };

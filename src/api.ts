@@ -120,6 +120,9 @@ export const api = {
   inventoryByMac: (mac: string) => request<InventoryDevice>("GET", `/admin/inventory/mac/${mac.replace(/:/g, "")}`),
   recordFlash: (report: FlashReport) => request<InventoryDevice>("POST", "/admin/inventory/flash", report),
   inventoryEvent: (id: number, change: InventoryChange) => request<InventoryDevice>("POST", `/admin/inventory/${id}/events`, change),
+  /** Release a device by name, also when it is not in the inventory. */
+  releaseDevice: (name: string, details?: string) =>
+    request<{ released: string }>("POST", `/admin/devices/${encodeURIComponent(name)}/release`, details ? { details } : {}),
 };
 
 export function explain(error: unknown): string {

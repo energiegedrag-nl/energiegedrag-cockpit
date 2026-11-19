@@ -96,7 +96,7 @@ export interface NewCampaign {
 
 // Device inventory of the flash station (package needforheat/inventory).
 export type InventoryState = "flashed" | "assigned" | "shipped" | "returned" | "erased";
-export type InventoryEventName = "flash" | "assign" | "ship" | "return" | "erase" | "note";
+export type InventoryEventName = "flash" | "assign" | "ship" | "return" | "release" | "erase" | "note";
 
 export interface InventoryEvent {
   id: number;
@@ -132,6 +132,10 @@ export interface FlashReport {
   firmware: string;
   firmware_version: string;
   force?: boolean;
+  /** Goes to another participant: archive the device row the app activated, remove the account link. */
+  release?: boolean;
+  /** Repaired for the same participant: keep the account; the device is returned, ready to ship back. */
+  keep_account?: boolean;
 }
 
 export interface InventoryChange {
