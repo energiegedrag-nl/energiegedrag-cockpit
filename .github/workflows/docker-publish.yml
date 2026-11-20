@@ -9,6 +9,13 @@ on:
     branches: [main]
     tags: ["v*.*.*"]
 
+# One run per ref at a time; a newer push cancels the older run. Without this two merges seconds apart ran in
+# parallel and the slower (older) run set :main last: :main pointed to ebd90fc with nginx 1.27 instead of
+# fe5c381 with 1.30.7 (20-11).
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
   packages: write
