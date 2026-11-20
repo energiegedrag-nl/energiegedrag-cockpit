@@ -52,7 +52,13 @@ describe("provisioning payload", () => {
 
   it("finds v2 in coloured ESP-IDF log output", () => {
     const log = `\x1b[0;32mI (812) generic_esp_32: QR Code Payload: \n\n\n${v2}\n\n\x1b[0m\r\n`;
-    expect(findProvisioning(log)).toEqual({ payload: v2, name: "1A2B-DDEEFF", format: "v2" });
+    expect(findProvisioning(log)).toEqual({ payload: v2, name: "1A2B-DDEEFF", pop: "1234567890123456789", format: "v2" });
+  });
+
+  it("gives the PoP exactly as the app sends it (gearup-app qrCode.test.tsx vectors)", () => {
+    const log = (code: string) => `I (812) generic_esp_32: QR Code Payload: \n${code}\n`;
+    expect(findProvisioning(log("NFH:EENCWPCNLYASGRLHRGV4333G"))?.pop).toBe("81985529216486895");
+    expect(findProvisioning(log("NFH:EENCWPCNLYAAAAAAXNAOMTJV"))?.pop).toBe("3141592653");
   });
 
   it("finds v1 JSON, also across lines, and waits for the closing brace", () => {
@@ -60,6 +66,7 @@ describe("provisioning payload", () => {
     const log = `I (700) generic_esp_32: QR Code Payload: \n\n\n${json}\n\n`;
     expect(findProvisioning(log)?.name).toBe("1A2B-DDEEFF");
     expect(findProvisioning(log)?.payload).toBe(json);
+    expect(findProvisioning(log)?.pop).toBe("810471295");
     expect(findProvisioning(log.slice(0, log.indexOf("}")))).toBeNull();
     expect(findProvisioning("I (10) boot: ESP-IDF v4.4")).toBeNull();
   });

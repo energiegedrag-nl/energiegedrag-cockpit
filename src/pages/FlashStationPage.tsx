@@ -182,6 +182,15 @@ export function FlashStationPage() {
       const provisioning = await resetAndWatch(c, setConsoleText, findProvisioning);
       const name = provisioning && nameMatchesMac(provisioning.name, c.mac) ? provisioning.name : "";
       if (provisioning && !name) addLog(`Naam ${provisioning.name} past niet bij MAC ${c.mac}; niet geregistreerd als naam.`);
+      const keep = linked && decision === "keep";
+      // Back to the same participant: the device row of that participant must get the new activation secret, or the
+      // device's activation gives 403 after a full erase (20-11).
+      const secret = keep && name && provisioning ? provisioning.pop : undefined;
+      if (keep && !secret)
+        addLog(
+          "Let op: geen QR-code gezien, dus het nieuwe activeringsgeheim is niet doorgegeven. Na volledig wissen lukt " +
+            "koppelen bij dezelfde deelnemer dan niet (403): gebruik Vrijgeven en koppel opnieuw met de app.",
+        );
       const device = await api.recordFlash({
         mac: c.mac,
         chip: c.chipFamily,
@@ -190,8 +199,10 @@ export function FlashStationPage() {
         firmware: choice.repo,
         firmware_version: `${choice.tag} ${choice.variant}`,
         release: linked && decision === "release",
-        keep_account: linked && decision === "keep",
+        keep_account: keep,
+        activation_secret: secret,
       });
+      if (secret) addLog("Nieuw activeringsgeheim doorgegeven aan de server: de deelnemer koppelt opnieuw met de app.");
       connection.current = null; // resetAndWatch closed the port
       setKnown(device);
       queryClient.invalidateQueries({ queryKey: ["inventory"] });

@@ -136,6 +136,8 @@ export interface FlashReport {
   release?: boolean;
   /** Repaired for the same participant: keep the account; the device is returned, ready to ship back. */
   keep_account?: boolean;
+  /** With keep_account: the new activation secret (PoP) from the QR code; the server replaces the stored hash. */
+  activation_secret?: string;
 }
 
 export interface InventoryChange {
