@@ -189,3 +189,9 @@ progress { width: 100%; height: 12px; accent-color: var(--accent); }
 .bar.stalled .bar-fill::after { animation-duration: 0.9s; background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.7) 50%, transparent 100%); }
 @keyframes shimmer { to { transform: translateX(100%); } }
 @media (prefers-reduced-motion: reduce) { .bar-fill::after { animation: none; } .bar-fill { transition: none; } }
+
+/* Flash station: where does a linked device go (another participant or back after repair). */
+.decision { border: 1px solid currentColor; margin: 12px 0 0; }
+.decision legend { font-weight: 600; padding: 0 4px; }
+.decision .check { display: block; margin: 6px 0; }
+.danger { color: var(--late); border-color: var(--late); }

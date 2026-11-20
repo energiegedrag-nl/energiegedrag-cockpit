@@ -90,7 +90,75 @@ export function InventoryPage() {
           </table>
         </div>
       )}
+
+      <ReleaseByName />
     </>
+  );
+}
+
+/** For devices that are not in the inventory (flashed before it existed, or with another tool). */
+function ReleaseByName() {
+  const queryClient = useQueryClient();
+  const [name, setName] = useState("");
+  const [confirm, setConfirm] = useState(false);
+  const release = useMutation({
+    mutationFn: () => api.releaseDevice(name.trim().toUpperCase(), "vrijgegeven op naam in de Cockpit"),
+    onSuccess: () => {
+      setConfirm(false);
+      queryClient.invalidateQueries({ queryKey: ["inventory"] });
+    },
+  });
+  const valid = /^[0-9A-F]{4}-[0-9A-F]{6}$/.test(name.trim().toUpperCase());
+  return (
+    <section className="panel">
+      <h2>Apparaat vrijgeven op naam</h2>
+      <p className="hint">
+        Voor een apparaat dat niet in de voorraad staat. Vrijgeven ontkoppelt het van de deelnemer: de metingen blijven bij die deelnemer,
+        de naam komt vrij voor een andere deelnemer. Reset daarna het apparaat (wifi-reset of volledig wissen) voordat je het opnieuw koppelt.
+      </p>
+      {release.isError && (
+        <p className="error" role="alert">
+          {explain(release.error)}
+        </p>
+      )}
+      {release.isSuccess && <p className="ok-text">Vrijgegeven: {release.data.released}.</p>}
+      <form
+        className="row"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (valid) setConfirm(true);
+        }}
+      >
+        <div>
+          <label htmlFor="release-name">Apparaatnaam</label>
+          <input
+            id="release-name"
+            className="mono"
+            placeholder="FE2E-979798"
+            value={name}
+            onChange={(e) => {
+              setName(e.target.value);
+              setConfirm(false);
+              release.reset();
+            }}
+          />
+        </div>
+        {!confirm ? (
+          <button type="submit" disabled={!valid}>
+            Vrijgeven…
+          </button>
+        ) : (
+          <>
+            <button type="button" className="danger" onClick={() => release.mutate()} disabled={release.isPending}>
+              Ja, {name.trim().toUpperCase()} vrijgeven
+            </button>
+            <button type="button" onClick={() => setConfirm(false)}>
+              Annuleren
+            </button>
+          </>
+        )}
+      </form>
+    </section>
   );
 }
 
@@ -110,12 +178,14 @@ export function InventoryDevicePage({ id }: { id: number }) {
   const device = useQuery({ queryKey: ["inventory", id], queryFn: () => api.inventoryDevice(id) });
   const [accountId, setAccountId] = useState("");
   const [note, setNote] = useState("");
+  const [confirmRelease, setConfirmRelease] = useState(false);
   const change = useMutation({
     mutationFn: (c: InventoryChange) => api.inventoryEvent(id, c),
     onSuccess: (d) => {
       queryClient.setQueryData(["inventory", id], d);
       queryClient.invalidateQueries({ queryKey: ["inventory"], exact: true });
       setNote("");
+      setConfirmRelease(false);
     },
   });
 
@@ -123,6 +193,10 @@ export function InventoryDevicePage({ id }: { id: number }) {
   if (device.isError) return <p className="error" role="alert">{explain(device.error)}</p>;
   const d = device.data;
   const can = (s: InventoryState[]) => s.includes(d.state) && !change.isPending;
+  // The participant the device belongs to: assigned in the inventory, or else the account that activated it.
+  const owner = d.account_id ?? d.in_use?.account_id ?? null;
+  const canShipBack = d.state === "returned" && d.account_id !== null && !change.isPending;
+  const canRelease = can(["flashed", "assigned", "returned", "erased"]) && (d.in_use !== null || d.account_id !== null);
 
   return (
     <>
@@ -201,11 +275,52 @@ export function InventoryDevicePage({ id }: { id: number }) {
             <button type="button" disabled={!can(["assigned"])} onClick={() => change.mutate({ event: "ship" })}>
               Uitgegeven
             </button>
-            <button type="button" disabled={!can(["assigned", "shipped"])} onClick={() => change.mutate({ event: "return" })}>
-              Retour ontvangen
+            <button
+              type="button"
+              disabled={!can(["assigned", "shipped"])}
+              onClick={() => change.mutate({ event: "return", details: "ingenomen in het lab" })}
+              title="Het apparaat is terug in het lab en blijft van deze deelnemer (bijv. voor reparatie)"
+            >
+              Innemen
+            </button>
+            <button
+              type="button"
+              disabled={!canShipBack}
+              onClick={() => change.mutate({ event: "ship", details: "teruggestuurd na reparatie" })}
+            >
+              Terugsturen{d.state === "returned" && d.account_id ? ` naar deelnemer ${d.account_id}` : ""}
+            </button>
+            <button type="button" className="danger" disabled={!canRelease || confirmRelease} onClick={() => setConfirmRelease(true)}>
+              Vrijgeven…
             </button>
           </div>
-          <p className="hint">Wissen en opnieuw flashen doe je op het <a href="#/flashstation">flashstation</a> met het apparaat aangesloten.</p>
+          {confirmRelease && (
+            <div className="warning">
+              <p>
+                Vrijgeven voor een andere deelnemer? De koppeling met deelnemer {owner ?? "?"} verdwijnt: de metingen blijven bij die deelnemer,
+                de server weigert nieuwe metingen met de oude koppeling (410), en de naam <span className="mono">{d.name}</span> komt vrij.
+                Reset het apparaat (wifi-reset of volledig wissen op het flashstation) voordat de volgende deelnemer het koppelt.
+              </p>
+              <div className="row">
+                <button
+                  type="button"
+                  className="danger"
+                  disabled={change.isPending}
+                  onClick={() => change.mutate({ event: "release", details: `vrijgegeven; was van deelnemer ${owner ?? "?"}` })}
+                >
+                  Ja, vrijgeven
+                </button>
+                <button type="button" onClick={() => setConfirmRelease(false)}>
+                  Annuleren
+                </button>
+              </div>
+            </div>
+          )}
+          <p className="hint">
+            <strong>Innemen</strong>: terug in het lab, blijft van de deelnemer; daarna <strong>Terugsturen</strong> na reparatie, of{" "}
+            <strong>Vrijgeven</strong> voor een andere deelnemer. Een uitgegeven apparaat neem je eerst in. Wissen en opnieuw flashen doe je op
+            het <a href="#/flashstation">flashstation</a> met het apparaat aangesloten.
+          </p>
           <form
             className="row"
             onSubmit={(e) => {

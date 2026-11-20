@@ -75,8 +75,10 @@ inv_add("24:0A:C4:11:22:33", "5A1C-112233", "shipped", 7, {"account_id": 7, "cam
 inv_add("24:0A:C4:44:55:66", "5A1C-445566", "flashed", None, None, 2 * D)
 VAULTS = {}  # vault id -> list of versions (bytes); only stores, never reads
 MAIL = {2: {"campaign_id": 2, "enabled": True, "helpdesk_alias": "helpdesk-winter@energiegedrag.nl", "updated_at": NOW - D}}
-NEXT = {"flash": "flashed", "assign": "assigned", "ship": "shipped", "return": "returned", "erase": "erased"}
-ALLOWED = {"assign": {"flashed", "assigned"}, "ship": {"assigned"}, "return": {"assigned", "shipped"}}
+NEXT = {"flash": "flashed", "assign": "assigned", "ship": "shipped", "return": "returned", "release": "flashed", "erase": "erased"}
+ALLOWED = {"assign": {"flashed", "assigned"}, "ship": {"assigned", "returned"}, "return": {"assigned", "shipped"},
+           "release": {"flashed", "assigned", "returned", "erased"}}
+KEEPS_ACCOUNT = ("assigned", "shipped", "returned")
 
 
 def inv_full(i):
@@ -178,14 +180,17 @@ class Handler(SimpleHTTPRequestHandler):
             hit = [i for i, d in INVENTORY.items() if d["mac"] == mac]
             i = hit[0] if hit else len(INVENTORY) + 1
             old = INVENTORY.get(i)
-            if old and old["state"] in ("assigned", "shipped") and not body.get("force"):
+            decided = body.get("force") or body.get("release") or body.get("keep_account")
+            if old and old["state"] in KEEPS_ACCOUNT and not decided:
                 return self.send_json({"message": "device is still assigned to a participant; flash again with force to unlink it"}, 409)
+            keep = bool(body.get("keep_account") and old and old["account_id"])
             INVENTORY[i] = {"id": i, "mac": mac, "chip": body["chip"], "device_type": body["device_type"], "name": body["name"],
-                            "firmware": body["firmware"], "firmware_version": body["firmware_version"], "state": "flashed",
-                            "account_id": None, "note": old["note"] if old else "", "created_at": old["created_at"] if old else int(time.time()),
-                            "updated_at": int(time.time()), "in_use": None}
+                            "firmware": body["firmware"], "firmware_version": body["firmware_version"],
+                            "state": "returned" if keep else "flashed", "account_id": old["account_id"] if keep else None,
+                            "note": old["note"] if old else "", "created_at": old["created_at"] if old else int(time.time()),
+                            "updated_at": int(time.time()), "in_use": old["in_use"] if keep else None}
             EVENTS.setdefault(i, [])
-            inv_event(i, "flash", "flashed", None, body["firmware_version"])
+            inv_event(i, "flash", INVENTORY[i]["state"], INVENTORY[i]["account_id"], body["firmware_version"])
             return self.send_json(inv_full(i))
         m = re.fullmatch(r"/api/admin/inventory/(\d+)/events", self.path)
         if m and int(m.group(1)) in INVENTORY:
@@ -196,16 +201,29 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.send_json(inv_full(i))
             if ev not in NEXT or ev == "flash" or (ev in ALLOWED and d["state"] not in ALLOWED[ev]):
                 return self.send_json({"message": "event not allowed in the current state"}, 409)
+            if ev == "ship" and d["state"] == "returned" and not d["account_id"]:
+                return self.send_json({"message": "the device has no account to send it back to; assign it first"}, 409)
+            if ev == "release":
+                d["in_use"] = None
             if ev == "assign":
                 if body.get("account_id") not in (7, 8, 9, 10, 11):
                     return self.send_json({"message": "unknown account"}, 400)
                 d["account_id"] = body["account_id"]
             d["state"] = NEXT[ev]
-            if d["state"] not in ("assigned", "shipped"):
+            if d["state"] not in KEEPS_ACCOUNT:
                 d["account_id"] = None
             d["updated_at"] = int(time.time())
             inv_event(i, ev, d["state"], d["account_id"], body.get("details", ""))
             return self.send_json(inv_full(i))
+        m = re.fullmatch(r"/api/admin/devices/([0-9A-F]{4}-[0-9A-F]{6})/release", self.path)
+        if m:
+            hit = [i for i, d in INVENTORY.items() if d["name"] == m.group(1) and d["in_use"]]
+            if not hit and m.group(1) != "FE2E-979798":  # FE2E-979798: in use, not in the inventory (example)
+                return self.send_json({"message": "no active device with this name"}, 404)
+            for i in hit:
+                INVENTORY[i]["in_use"] = None
+                inv_event(i, "release", INVENTORY[i]["state"], None, body.get("details", ""))
+            return self.send_json({"released": f"device {m.group(1)} archived as {m.group(1)}~{time.strftime('%Y%m%d-%H%M%S', time.gmtime())}"})
         if self.path.endswith("/invitation"):
             return self.send_json({"account_id": int(self.path.split("/")[-2]), "invitation_url": "https://energiegedrag.nl/nfh/invite/nieuw-voorbeeld"})
         return self.send_json({"message": "not found"}, 404)
