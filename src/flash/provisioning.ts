@@ -8,6 +8,12 @@
 export interface Provisioning {
   payload: string; // exactly what goes into the QR code on the label
   name: string;
+  /**
+   * Activation secret (proof of possession) as the app sends it to the server: v1 the "pop" string, v2 the 8 PoP bytes
+   * as an unsigned decimal number (needforheat-gearup-app src/lib/provisioning/qrCode.ts). Sent with "terug naar
+   * dezelfde deelnemer", because a full erase gives the device a new secret.
+   */
+  pop: string;
   format: "v1" | "v2";
 }
 
@@ -41,12 +47,19 @@ function base32Decode(text: string): Uint8Array | null {
 
 const hex = (bytes: Iterable<number>) => Array.from(bytes, (b) => b.toString(16).toUpperCase().padStart(2, "0")).join("");
 
-/** Name from a v2 payload, or null if the payload is damaged. */
-export function decodeV2(payload: string): string | null {
+/** Name and PoP from a v2 payload, or null if the payload is damaged. */
+export function parseV2(payload: string): { name: string; pop: string } | null {
   if (!payload.startsWith("NFH:")) return null;
   const bytes = base32Decode(payload.slice(4));
   if (!bytes || bytes.length < 15 || bytes[0] !== 0x21 || crc8(bytes.subarray(0, 14)) !== bytes[14]) return null;
-  return `${hex(bytes.subarray(1, 3))}-${hex(bytes.subarray(3, 6))}`;
+  let pop = 0n;
+  for (const b of bytes.subarray(6, 14)) pop = pop * 256n + BigInt(b);
+  return { name: `${hex(bytes.subarray(1, 3))}-${hex(bytes.subarray(3, 6))}`, pop: pop.toString() };
+}
+
+/** Name from a v2 payload, or null if the payload is damaged. */
+export function decodeV2(payload: string): string | null {
+  return parseV2(payload)?.name ?? null;
 }
 
 // eslint-disable-next-line no-control-regex
@@ -61,8 +74,8 @@ export function findProvisioning(consoleText: string): Provisioning | null {
 
   const v2 = /NFH:[A-Z2-7]{24}/.exec(rest);
   if (v2) {
-    const name = decodeV2(v2[0]);
-    return name ? { payload: v2[0], name, format: "v2" } : null;
+    const parsed = parseV2(v2[0]);
+    return parsed ? { payload: v2[0], name: parsed.name, pop: parsed.pop, format: "v2" } : null;
   }
 
   const start = rest.indexOf("{");
@@ -72,7 +85,7 @@ export function findProvisioning(consoleText: string): Provisioning | null {
   try {
     const parsed = JSON.parse(raw) as { name?: unknown; pop?: unknown };
     if (typeof parsed.name !== "string" || typeof parsed.pop !== "string") return null;
-    return { payload: raw, name: parsed.name, format: "v1" };
+    return { payload: raw, name: parsed.name, pop: parsed.pop, format: "v1" };
   } catch {
     return null;
   }
