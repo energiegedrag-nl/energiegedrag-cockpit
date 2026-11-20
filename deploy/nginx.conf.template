@@ -33,6 +33,30 @@ server {
         expires -1;
     }
 
+    # "Nu ophalen" in the flash station: ask the firmware mirror for a run now (mirror/mirror.py, MIRROR_TRIGGER).
+    # Only with an admin token the API accepts: nginx first asks the API (auth_request). Through a variable plus
+    # Docker's resolver, so the Cockpit still starts when the mirror is not there (then this gives a 502).
+    location = /firmware-mirror/refresh {
+        limit_except POST { deny all; }
+        auth_request /_admin_check;
+        resolver 127.0.0.11 valid=30s ipv6=off;
+        set $mirror_upstream ${MIRROR_UPSTREAM};
+        proxy_pass $mirror_upstream/refresh;
+        proxy_set_header Authorization "";
+        access_log off;
+    }
+
+    # Token check for the route above: 2xx from the API = valid admin token, 401/403 = refused.
+    location = /_admin_check {
+        internal;
+        proxy_method GET;
+        proxy_pass ${API_UPSTREAM}/admin/overview;
+        proxy_pass_request_body off;
+        proxy_set_header Content-Length "";
+        proxy_set_header Host $host;
+        access_log off;
+    }
+
     # No add_header in locations: that would drop the security headers above (nginx does not merge them).
     location /assets/ {
         expires 1y;

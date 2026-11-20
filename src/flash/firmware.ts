@@ -40,6 +40,48 @@ export interface FlashImage {
 
 const BASE = "/firmware/";
 
+/** status.json of the mirror (mirror/mirror.py, State.write). */
+export interface MirrorStatus {
+  running: boolean;
+  requested: boolean;
+  started_at: number;
+  finished_at: number;
+  ok: boolean | null;
+  builds: number;
+  problems: string[];
+  next_run_at: number;
+}
+
+/** null: no status yet (older mirror, or it has not run). */
+export async function loadMirrorStatus(): Promise<MirrorStatus | null> {
+  const response = await fetch(BASE + "status.json", { cache: "no-cache" });
+  if (response.status === 404) return null;
+  if (!response.ok) throw new FirmwareError(`Status van de firmwarespiegel niet te laden (HTTP ${response.status}).`);
+  return (await response.json()) as MirrorStatus;
+}
+
+/** Ask the mirror to fetch the releases now. Throws ApiError-like errors with a Dutch message. */
+export async function refreshMirror(token: string | null): Promise<string> {
+  const response = await fetch("/firmware-mirror/refresh", {
+    method: "POST",
+    headers: { Accept: "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+  });
+  let message = "";
+  try {
+    message = String(((await response.json()) as { message?: unknown }).message ?? "");
+  } catch {
+    // not JSON (nginx error page)
+  }
+  if (response.status === 202) return message;
+  if (response.status === 401 || response.status === 403) throw new FirmwareError("De server accepteert dit beheertoken niet. Log opnieuw in.");
+  if (response.status === 429) throw new FirmwareError(`De spiegel heeft net opgehaald: ${message || "probeer het over een minuut opnieuw"}.`);
+  if (response.status === 404 || response.status === 405)
+    throw new FirmwareError("Deze Cockpit kent \u2018Nu ophalen\u2019 nog niet (nieuwer image nodig).");
+  if (response.status === 502 || response.status === 503 || response.status === 504)
+    throw new FirmwareError("De firmwarespiegel is niet bereikbaar (draait de service firmware-mirror, met MIRROR_TRIGGER?).");
+  throw new FirmwareError(`Nu ophalen mislukt (HTTP ${response.status}).`);
+}
+
 export class FirmwareError extends Error {}
 
 export async function loadIndex(): Promise<FirmwareIndex> {

@@ -38,6 +38,12 @@ jobs:
         with:
           context: .
           push: false
+          load: true
+          tags: cockpit:ci
+      # The nginx config is a template: render it the way the image does at start-up and let nginx check it, so a
+      # mistake there cannot stop the Cockpit from starting. api is resolved at start-up, hence --add-host.
+      - name: nginx -t on the rendered config
+        run: docker run --rm --add-host api:127.0.0.1 cockpit:ci nginx -t
 
   mirror:
     name: Firmware mirror (unit tests, Docker build)
