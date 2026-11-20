@@ -11,7 +11,7 @@ RUN npm run build
 
 FROM nginx:1.27-alpine
 # The official nginx image runs envsubst on /etc/nginx/templates/*.template at start-up.
-ENV API_UPSTREAM=http://api:8080 KLUIS_URL=https://kluis.energiegedrag.nl/
+ENV API_UPSTREAM=http://api:8080 KLUIS_URL=https://kluis.energiegedrag.nl/ MIRROR_UPSTREAM=http://firmware-mirror:8090
 COPY deploy/nginx.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build /app/dist /usr/share/nginx/html
 EXPOSE 80

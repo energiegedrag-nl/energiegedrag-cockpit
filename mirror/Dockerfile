@@ -6,4 +6,6 @@ COPY mirror.py /app/mirror.py
 USER mirror
 ENV FIRMWARE_DIR=/firmware PYTHONUNBUFFERED=1
 VOLUME /firmware
+# "Nu ophalen" (MIRROR_TRIGGER); not published, only the Cockpit's nginx forwards to it after a token check.
+EXPOSE 8090
 CMD ["python", "-I", "/app/mirror.py"]

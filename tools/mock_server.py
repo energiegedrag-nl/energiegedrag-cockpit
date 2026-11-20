@@ -175,6 +175,10 @@ class Handler(SimpleHTTPRequestHandler):
                 out.append({"account_id": next_id[0], "invitation_url": f"https://energiegedrag.nl/nfh/invite/voorbeeld-token-{next_id[0]}"})
                 next_id[0] += 1
             return self.send_json(out)
+        if self.path == "/firmware-mirror/refresh":  # "Nu ophalen": the real mirror runs in its own container
+            if not self.headers.get("Authorization"):
+                return self.send_json({"message": "unauthorized"}, 401)
+            return self.send_json({"message": "gestart (mock: er wordt niets opgehaald)"}, 202)
         if self.path == "/api/admin/inventory/flash":
             mac = body["mac"].upper()
             hit = [i for i, d in INVENTORY.items() if d["mac"] == mac]

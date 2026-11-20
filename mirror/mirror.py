@@ -16,7 +16,13 @@ Standard library only. Configuration through environment variables:
   FIRMWARE_REPOS   comma-separated owner/repo list
   FIRMWARE_DIR     output directory (default /firmware)
   MIRROR_INTERVAL  seconds between runs; 0 = run once (default 21600)
+  MIRROR_TRIGGER   host:port for "fetch now" (POST /refresh), default 0.0.0.0:8090; empty = off. Not published:
+                   the Cockpit's nginx forwards it only after the API accepted the admin token. At most one extra
+                   run a minute, so the GitHub API limit holds.
   GITHUB_TOKEN     optional, raises the GitHub API rate limit
+
+Every run writes status.json (running, started_at, finished_at, ok, builds, problems, next_run_at) next to index.json,
+so the flash station can show when the mirror last fetched and whether it is fetching now.
 """
 
 import hashlib
@@ -28,10 +34,12 @@ import shutil
 import struct
 import sys
 import tempfile
+import threading
 import time
 import urllib.error
 import urllib.request
 import zipfile
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 DEFAULT_REPOS = ",".join(
@@ -217,14 +225,21 @@ def mirror_asset(out: Path, repo: str, release: dict, asset: dict, sdkconfig: di
     return manifest
 
 
-def run(out: Path, repos: list[str]) -> None:
+def run(out: Path, repos: list[str]) -> tuple[int, list[str]]:
+    """Mirror all repositories; returns the number of builds and the problems (also printed)."""
     out.mkdir(parents=True, exist_ok=True)
     entries = []
+    problems: list[str] = []
+
+    def warn(message: str) -> None:
+        print(message, file=sys.stderr)
+        problems.append(message)
+
     for repo in repos:
         try:
             releases = json.loads(get(f"https://api.github.com/repos/{repo}/releases?per_page=20", api=True))
         except Exception as e:  # keep mirroring the other repositories
-            print(f"{repo}: {e}", file=sys.stderr)
+            warn(f"{repo}: {e}")
             continue
         for release in releases:
             if release.get("draft"):
@@ -241,19 +256,19 @@ def run(out: Path, repos: list[str]) -> None:
                 sdkconfig = sdkconfig_values(text)
                 device_type = device_type_of(get_optional(f"{raw}/src/main.cpp") or "")
             except Refused as e:
-                print(f"{repo} {tag}: refused: {e}", file=sys.stderr)
+                warn(f"{repo} {tag}: refused: {e}")
                 continue
             except Exception as e:
-                print(f"{repo} {tag}: {e}", file=sys.stderr)
+                warn(f"{repo} {tag}: {e}")
                 continue
             for asset in zips:
                 try:
                     manifest = mirror_asset(out, repo, release, asset, sdkconfig, device_type)
                 except Refused as e:
-                    print(f"{repo} {tag}: refused: {e}", file=sys.stderr)
+                    warn(f"{repo} {tag}: refused: {e}")
                     continue
                 except Exception as e:
-                    print(f"{repo} {tag} {asset['name']}: {e}", file=sys.stderr)
+                    warn(f"{repo} {tag} {asset['name']}: {e}")
                     continue
                 nfh = manifest["nfh"]
                 entries.append({
@@ -267,20 +282,133 @@ def run(out: Path, repos: list[str]) -> None:
     tmp.write_text(json.dumps(index, indent=2))
     os.replace(tmp, out / "index.json")
     print(f"mirrored {len(entries)} builds")
+    return len(entries), problems
+
+
+# ---- "fetch now" ---------------------------------------------------------------------------------------------------
+
+TRIGGER_MIN_GAP_S = 60  # at most one extra run a minute (GitHub API: 60 calls an hour without a token)
+
+
+class State:
+    """What the mirror is doing; shared by the run loop and the trigger listener."""
+
+    def __init__(self, out: Path):
+        self.out = out
+        self.lock = threading.Lock()
+        self.wake = threading.Event()
+        self.running = False
+        self.requested = False
+        self.started_at = 0
+        self.finished_at = 0
+        self.ok: bool | None = None
+        self.builds = 0
+        self.problems: list[str] = []
+        self.next_run_at = 0
+
+    def write(self) -> None:
+        """status.json next to index.json (call with the lock held)."""
+        status = {
+            "running": self.running, "requested": self.requested, "started_at": self.started_at,
+            "finished_at": self.finished_at, "ok": self.ok, "builds": self.builds,
+            "problems": self.problems[:20], "next_run_at": self.next_run_at,
+        }
+        try:
+            self.out.mkdir(parents=True, exist_ok=True)
+            tmp = self.out / ".status.json.tmp"
+            tmp.write_text(json.dumps(status, indent=2))
+            os.replace(tmp, self.out / "status.json")
+        except OSError as e:
+            print(f"status.json: {e}", file=sys.stderr)
+
+    def trigger(self, now: float | None = None) -> tuple[int, dict]:
+        """Ask for a run now. 202 when started or queued after the current run, 429 right after a run."""
+        now = time.time() if now is None else now
+        with self.lock:
+            if self.running or self.requested:
+                queued = not self.requested
+                self.requested = True
+                self.write()
+                self.wake.set()
+                return 202, {"message": "na de huidige ronde" if queued else "al aangevraagd"}
+            if self.finished_at and now - self.finished_at < TRIGGER_MIN_GAP_S:
+                wait = int(TRIGGER_MIN_GAP_S - (now - self.finished_at)) + 1
+                return 429, {"message": f"net opgehaald; probeer het over {wait} s opnieuw", "retry_after": wait}
+            self.requested = True
+            self.write()
+        self.wake.set()
+        return 202, {"message": "gestart"}
+
+    def run_once(self, repos: list[str], interval: int) -> None:
+        with self.lock:
+            self.running, self.requested = True, False
+            self.started_at = int(time.time())
+            self.wake.clear()  # a trigger during this run sets it again: then one more run follows
+            self.write()
+        ok, builds, problems = False, 0, []
+        try:
+            builds, problems = run(self.out, repos)
+            ok = True
+        except Exception as e:
+            print(f"mirror run failed: {e}", file=sys.stderr)
+            problems = [f"mirror run failed: {e}"]
+        with self.lock:
+            self.running = False
+            self.finished_at = int(time.time())
+            self.ok, self.builds, self.problems = ok, builds, problems
+            self.next_run_at = self.finished_at + interval if interval > 0 else 0
+            self.write()
+
+
+def trigger_handler(state: State) -> type[BaseHTTPRequestHandler]:
+    class Handler(BaseHTTPRequestHandler):
+        def do_POST(self) -> None:
+            if self.path.split("?")[0] != "/refresh":
+                return self.reply(404, {"message": "not found"})
+            code, body = state.trigger()
+            self.reply(code, body)
+
+        def do_GET(self) -> None:
+            self.reply(405, {"message": "POST /refresh"})
+
+        def reply(self, code: int, body: dict) -> None:
+            data = json.dumps(body).encode()
+            self.send_response(code)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(data)))
+            if code == 429:
+                self.send_header("Retry-After", str(body.get("retry_after", TRIGGER_MIN_GAP_S)))
+            self.end_headers()
+            self.wfile.write(data)
+
+        def log_message(self, format: str, *args) -> None:
+            print("trigger: " + format % args, file=sys.stderr)
+
+    return Handler
+
+
+def start_trigger(state: State, address: str) -> ThreadingHTTPServer | None:
+    if not address:
+        return None
+    host, _, port = address.rpartition(":")
+    server = ThreadingHTTPServer((host or "0.0.0.0", int(port)), trigger_handler(state))
+    threading.Thread(target=server.serve_forever, name="trigger", daemon=True).start()
+    print(f"trigger listening on {host or '0.0.0.0'}:{port}", file=sys.stderr)
+    return server
 
 
 def main() -> None:
     out = Path(os.environ.get("FIRMWARE_DIR", "/firmware"))
     repos = [r.strip() for r in os.environ.get("FIRMWARE_REPOS", DEFAULT_REPOS).split(",") if r.strip()]
     interval = int(os.environ.get("MIRROR_INTERVAL", "21600"))
+    state = State(out)
+    if interval > 0:
+        start_trigger(state, os.environ.get("MIRROR_TRIGGER", "0.0.0.0:8090").strip())
     while True:
-        try:
-            run(out, repos)
-        except Exception as e:
-            print(f"mirror run failed: {e}", file=sys.stderr)
+        state.run_once(repos, interval)
         if interval <= 0:
             return
-        time.sleep(interval)
+        state.wake.wait(interval)
 
 
 if __name__ == "__main__":

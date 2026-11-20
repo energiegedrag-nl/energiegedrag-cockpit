@@ -2,6 +2,10 @@
 """Unit tests for the firmware mirror: python -m unittest discover mirror"""
 
 import hashlib
+import urllib.request
+import urllib.error
+import time
+import json
 import io
 import os
 import stat
@@ -79,6 +83,87 @@ class MirrorTest(unittest.TestCase):
             target = Path(d) / "lrm" / "v1" / "M5STACK_COREINK_PRODUCTION_SERVER"
             self.assertTrue(stat.S_IMODE(target.stat().st_mode) & stat.S_IXOTH, oct(target.stat().st_mode))
             self.assertTrue(stat.S_IMODE((target / "manifest.json").stat().st_mode) & stat.S_IROTH)
+
+
+class TriggerTest(unittest.TestCase):
+    """ "Nu ophalen": status.json, queueing during a run, at most one extra run a minute."""
+
+    def setUp(self):
+        self.dir = tempfile.TemporaryDirectory()
+        self.out = Path(self.dir.name)
+        self.state = mirror.State(self.out)
+
+    def tearDown(self):
+        self.dir.cleanup()
+
+    def status(self):
+        return json.loads((self.out / "status.json").read_text())
+
+    def test_run_once_writes_status(self):
+        with mock.patch.object(mirror, "run", return_value=(3, ["x: refused: y"])):
+            self.state.run_once(["a/b"], 21600)
+        s = self.status()
+        self.assertFalse(s["running"])
+        self.assertTrue(s["ok"])
+        self.assertEqual(s["builds"], 3)
+        self.assertEqual(s["problems"], ["x: refused: y"])
+        self.assertEqual(s["next_run_at"], s["finished_at"] + 21600)
+
+    def test_failed_run(self):
+        with mock.patch.object(mirror, "run", side_effect=RuntimeError("boom")):
+            self.state.run_once(["a/b"], 0)
+        s = self.status()
+        self.assertFalse(s["ok"])
+        self.assertEqual(s["next_run_at"], 0)
+
+    def test_trigger_when_idle_wakes_the_loop(self):
+        code, body = self.state.trigger(now=1000)
+        self.assertEqual(code, 202)
+        self.assertTrue(self.state.wake.is_set())
+        self.assertTrue(self.status()["requested"])
+
+    def test_trigger_right_after_a_run_is_refused(self):
+        self.state.finished_at = 1000
+        code, body = self.state.trigger(now=1000 + mirror.TRIGGER_MIN_GAP_S - 10)
+        self.assertEqual(code, 429)
+        self.assertFalse(self.state.wake.is_set())
+        code, _ = self.state.trigger(now=1000 + mirror.TRIGGER_MIN_GAP_S + 1)
+        self.assertEqual(code, 202)
+
+    def test_trigger_during_a_run_queues_one_more(self):
+        seen = []
+
+        def fake_run(out, repos):
+            # A trigger arrives while this run is busy.
+            seen.append(self.state.trigger(now=time.time()))
+            seen.append(self.state.trigger(now=time.time()))
+            return 1, []
+
+        with mock.patch.object(mirror, "run", side_effect=fake_run):
+            self.state.run_once(["a/b"], 21600)
+        self.assertEqual([c for c, _ in seen], [202, 202])
+        self.assertEqual(seen[0][1]["message"], "na de huidige ronde")
+        self.assertEqual(seen[1][1]["message"], "al aangevraagd")
+        # The loop must not sleep: the wake event stays set and status.json shows the request.
+        self.assertTrue(self.state.wake.is_set())
+        self.assertTrue(self.status()["requested"])
+
+    def test_http_listener(self):
+        server = mirror.start_trigger(self.state, "127.0.0.1:0")
+        try:
+            port = server.server_address[1]
+            req = urllib.request.Request(f"http://127.0.0.1:{port}/refresh", method="POST")
+            with urllib.request.urlopen(req, timeout=5) as r:
+                self.assertEqual(r.status, 202)
+            with self.assertRaises(urllib.error.HTTPError) as e:
+                urllib.request.urlopen(urllib.request.Request(f"http://127.0.0.1:{port}/other", method="POST"), timeout=5)
+            self.assertEqual(e.exception.code, 404)
+        finally:
+            server.shutdown()
+            server.server_close()
+
+    def test_trigger_off(self):
+        self.assertIsNone(mirror.start_trigger(self.state, ""))
 
 
 if __name__ == "__main__":

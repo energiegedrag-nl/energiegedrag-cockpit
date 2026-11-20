@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: EUPL-1.2
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ApiError, api, explain } from "../api";
+import { ApiError, api, explain, getToken } from "../api";
 import { connect, disconnect, eraseAll, FLASH_BAUD, flash, resetAndWatch, SAFE_FLASH_BAUD, serialSupported, type Connection } from "../flash/esp";
-import { loadImages, loadIndex, sortFirmware, type FirmwareEntry } from "../flash/firmware";
+import { loadImages, loadIndex, loadMirrorStatus, refreshMirror, sortFirmware, type FirmwareEntry } from "../flash/firmware";
 import { findProvisioning, nameMatchesMac, type Provisioning } from "../flash/provisioning";
 import { firmwareLabel, formatDateTime, inventoryStateLabel } from "../format";
 import type { InventoryDevice } from "../types";
@@ -19,6 +19,77 @@ type Step =
   | { kind: "erased"; device: InventoryDevice | null };
 
 const entryKey = (e: FirmwareEntry) => `${e.repo}@${e.tag}/${e.variant}`;
+
+/**
+ * "Gespiegeld <tijd>" plus "Nu ophalen": the mirror fetches the firmware releases every 6 hours; a release that was just
+ * published can be fetched at once (mirror/mirror.py, MIRROR_TRIGGER; nginx checks the admin token first).
+ */
+function MirrorRefresh({ generatedAt, disabled }: { generatedAt: number; disabled: boolean }) {
+  const queryClient = useQueryClient();
+  const [asked, setAsked] = useState<number | null>(null); // unix time of the click
+  const [message, setMessage] = useState<string | null>(null);
+  const [failure, setFailure] = useState<string | null>(null);
+  const status = useQuery({
+    queryKey: ["firmware-mirror-status"],
+    queryFn: loadMirrorStatus,
+    refetchInterval: (q) => (asked !== null || q.state.data?.running ? 3000 : 60000),
+  });
+  const s = status.data;
+  const busy = asked !== null || !!s?.running || !!s?.requested;
+
+  useEffect(() => {
+    if (asked === null || !s) return;
+    if (!s.running && !s.requested && s.finished_at >= asked) {
+      setAsked(null);
+      void queryClient.invalidateQueries({ queryKey: ["firmware-index"] });
+      const problems = s.problems.length ? ` ${s.problems.length} melding${s.problems.length === 1 ? "" : "en"}, zie hieronder.` : "";
+      setMessage(s.ok ? `Klaar: ${s.builds} build${s.builds === 1 ? "" : "s"} beschikbaar.${problems}` : `Ophalen mislukt.${problems}`);
+    } else if (Date.now() / 1000 - asked > 600) {
+      setAsked(null);
+      setFailure("De spiegel is na 10 minuten nog niet klaar; kijk in het log van firmware-mirror.");
+    }
+  }, [asked, s, queryClient]);
+
+  async function onClick() {
+    setMessage(null);
+    setFailure(null);
+    const now = Math.floor(Date.now() / 1000);
+    try {
+      await refreshMirror(getToken());
+      setAsked(now);
+      void status.refetch();
+    } catch (e) {
+      setFailure(explain(e));
+    }
+  }
+
+  const last = s?.finished_at || generatedAt;
+  return (
+    <div className="mirror-refresh">
+      <p className="hint">
+        Gespiegeld {formatDateTime(last)}
+        {s?.next_run_at ? `; volgende keer vanzelf ${formatDateTime(s.next_run_at)}` : ""}.{" "}
+        <button type="button" onClick={onClick} disabled={disabled || busy}>
+          {busy ? "Ophalen…" : "Nu ophalen"}
+        </button>
+      </p>
+      {message && <p className="small">{message}</p>}
+      {failure && <p className="error">{failure}</p>}
+      {s && !busy && s.problems.length > 0 && (
+        <details className="small">
+          <summary>Meldingen van de laatste ronde ({s.problems.length})</summary>
+          <ul>
+            {s.problems.map((p, i) => (
+              <li key={i}>
+                <code>{p}</code>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </div>
+  );
+}
 
 export function FlashStationPage() {
   const queryClient = useQueryClient();
@@ -227,8 +298,7 @@ export function FlashStationPage() {
                 </label>
               </div>
               <p className="hint">
-                Volledig wissen verwijdert oude wifi-gegevens en geeft het apparaat een nieuw geheim, dus ook een nieuwe QR-code. Gespiegeld{" "}
-                {formatDateTime(index.data.generated_at)}.
+                Volledig wissen verwijdert oude wifi-gegevens en geeft het apparaat een nieuw geheim, dus ook een nieuwe QR-code.
               </p>
               {choice && (
                 <p className="small">
@@ -237,6 +307,7 @@ export function FlashStationPage() {
               )}
             </>
           )}
+          <MirrorRefresh generatedAt={index.data?.generated_at ?? 0} disabled={busy} />
         </div>
 
         <div className="panel">
