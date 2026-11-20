@@ -180,6 +180,7 @@ const state = {
   savedLocal: null,
   savedServer: null,
   serverError: null,
+  campaignError: null, // why loading the campaigns failed (token expired, server down)
   online: navigator.onLine,
   memoryToken: null,
   lastMails: null,
@@ -533,13 +534,37 @@ const TABS = [
 
 async function mainScreen() {
   await refresh();
-  if (token()) loadCampaigns().catch(() => {});
+  if (token()) loadCampaigns().catch((e) => ((state.campaignError = e.message), render()));
 }
 
 async function loadCampaigns() {
   const overview = await (await api("GET", "/admin/overview")).json();
   state.campaigns = overview.campaigns;
+  state.campaignError = null;
   render();
+}
+
+/**
+ * Token field and "Verbinden" where campaigns are needed (Uitnodigen), so you do not have to look for the tab
+ * Server en back-up. The token stays in this tab only, as there.
+ */
+function connectInline() {
+  const tokenInput = h("input", { type: "password", id: "tok-inline", autocomplete: "off", placeholder: token() ? "ingevuld" : "beheertoken" });
+  const connect = h("button", { type: "button", class: "primary" }, "Verbinden");
+  connect.onclick = () =>
+    guarded(connect, async () => {
+      if (tokenInput.value) setToken(tokenInput.value);
+      await loadCampaigns();
+    });
+  return h("div", { class: "notice" },
+    h("p", { class: "small" }, token()
+      ? "Er zijn geen lopende campagnes opgehaald. Controleer het beheertoken (verlopen of ingetrokken?) en verbind opnieuw."
+      : "Om campagnes op te halen heeft de kluis het beheertoken nodig. Het blijft alleen in dit tabblad."),
+    h("label", { for: "tok-inline" }, "Beheertoken"), secretField(tokenInput),
+    h("p", { class: "small muted" }, TOKEN_HELP),
+    h("div", { class: "row" }, connect),
+    state.campaignError && h("p", { class: "error" }, state.campaignError),
+  );
 }
 
 function render() {
@@ -636,7 +661,7 @@ function editDialog(p) {
 }
 
 function campaignSelect(id) {
-  return h("select", { id }, h("option", { value: "" }, state.campaigns.length ? "Kies een campagne…" : "Geen campagnes (vul het beheertoken in)"),
+  return h("select", { id }, h("option", { value: "" }, state.campaigns.length ? "Kies een campagne…" : token() ? "Geen campagnes opgehaald" : "Geen campagnes (verbind eerst hieronder)"),
     state.campaigns.filter((c) => c.state !== "ended").map((c) => h("option", { value: c.id }, c.name)));
 }
 
@@ -665,6 +690,7 @@ function inviteTab() {
       h("p", {}, "Selecteer op de tab Deelnemers wie je wilt uitnodigen. De server maakt dan evenveel nieuwe accounts en geeft accountnummers en persoonlijke links terug; ", h("strong", {}, "de server krijgt alleen het aantal"), ". De koppeling tussen persoon en accountnummer bestaat alleen in deze kluis."),
       h("p", { class: "small muted" }, `${chosen.length} geselecteerd van ${candidates.length} nog niet uitgenodigde proefpersonen.`),
       h("label", { for: "camp" }, "Campagne"), select,
+      !state.campaigns.length && connectInline(),
       h("div", { class: "row" }, go),
     ),
     h("section", { class: "panel" }, h("h2", {}, "Geselecteerd"), chosen.length ? h("ul", {}, chosen.map((p) => h("li", {}, `${p.naam} `, h("span", { class: "muted small" }, p.email)))) : h("p", { class: "muted" }, "Niemand.")),
